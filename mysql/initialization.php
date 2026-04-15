@@ -24,8 +24,9 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- Seed superadmin — password: Admin@1234 (change after first login)
 INSERT IGNORE INTO `users` (`email`, `name`, `password`, `role`, `is_active`) VALUES
 ('superadmin@school.com', 'Super Admin',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2y$10$TKh8H1.PfbuNIAHJj5HuxemtLgUgaQ4.LG5O4K5RoTGMFCGqMGnAa',
  'superadmin', 1);
+-- Default password: Admin@1234
 
 -- ============================================================
 --  SCHOOL YEARS
