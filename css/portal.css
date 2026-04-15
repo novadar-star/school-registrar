@@ -24,7 +24,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); -web
 .portal-login-wrap {
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #2d3070 0%, #494C8A 60%, #6b6fb8 100%);
+  background: linear-gradient(135deg, #c7c9e8 0%, #9fa3d4 50%, #b4b7e7 100%);
   padding: 24px;
 }
 

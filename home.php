@@ -36,7 +36,7 @@
 <section class="hero" id="home">
   <div class="hero-overlay"></div>
   <div class="hero-content">
-    <div class="hero-badge">SY 2025–2026 Enrollment Now Open</div>
+    <div class="hero-badge">SY 2026–2027 Enrollment Now Open</div>
     <h1>Welcome to<br><span>COJ Catholic<br>Progressive School</span></h1>
     <p>Developing Christian Servant Leaders through character formation and academic excellence.</p>
     <div class="hero-actions">
@@ -98,7 +98,7 @@
   <div class="container">
     <div class="section-label">Admissions</div>
     <h2 class="section-title">Online Enrollment Form</h2>
-    <p class="section-sub">Fill out the form below to begin your enrollment for SY 2025–2026. Our registrar will review your submission and contact you within 2–3 school days.</p>
+    <p class="section-sub">Fill out the form below to begin your enrollment for SY 2026–2027. Our registrar will review your submission and contact you within 2–3 school days.</p>
 
     <?php
     // Handle enrollment form submission
@@ -154,7 +154,7 @@
       <h3>Enrollment Submitted!</h3>
       <p>Thank you for applying. Your reference number is:</p>
       <div style="font-size:22px;font-weight:800;color:var(--primary);letter-spacing:.05em;margin:12px 0;"><?= htmlspecialchars($enroll_ref ?? '') ?></div>
-      <p>Please <strong>save this reference number</strong>. Our registrar will review your application and contact you within 2–3 school days. The LRN will be assigned upon enrollment confirmation.</p>
+      <p>Please <strong>save this reference number</strong>. Our registrar will review your application and contact you within 2–3 school days.</p>
     </div>
     <?php else: ?>
 
@@ -231,8 +231,8 @@
       <div class="enroll-note">
         <i class="bi bi-info-circle-fill"></i>
         <div>
-          <strong>Note:</strong> The LRN (Learner Reference Number) will be assigned by the registrar upon enrollment confirmation — you do not need to provide it here.
-          After submitting, please prepare: <strong>PSA Birth Certificate, Report Card (Form 138), and 2x2 ID photo</strong> for document verification.
+          <strong>Note:</strong>
+          After submitting, please prepare: <strong>PSA Birth Certificate, Good Moral Certificate, Report Card (Form 138), and 2x2 ID photo</strong> for document verification.
         </div>
       </div>
 

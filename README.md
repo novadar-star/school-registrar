@@ -10,7 +10,7 @@ A web-based enrollment and records management system built for COJ Catholic Prog
 | | |
 |---|---|
 | **School** | COJ Catholic Progressive School |
-| **Scope** | Junior High School — Grades 7 to 10 |
+| **Scope** | Junior High School — Grades 7 to 10 | (subject to change once presentation is done)
 | **Interfaces** | Admin Portal + Parent Portal + Public Landing Page |
 | **Deployment** | LAN / Intranet (XAMPP) |
 | **Version** | 2.0 |
@@ -299,10 +299,3 @@ school-registrar/
 - Parent portal requires manual account creation by registrar
 
 ---
-
-## Capstone Project
-
-**School:** COJ Catholic Progressive School
-**System:** Student Enrollment and Records Management System
-**Scope:** Junior High School (Grades 7–10), Dual Interface
-**Community Impact:** Eliminates paper-based document submission, reduces lost records, gives parents real-time enrollment and payment visibility
