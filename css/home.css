@@ -142,6 +142,11 @@ body { font-family: var(--font); color: var(--text); background: var(--surface);
 .section { padding: 80px 32px; background: #fafafa; }
 .section-alt { background: #f0f2f8; }
 
+/* Enrollment section gets a subtle gradient backdrop */
+#enroll.section {
+  background: linear-gradient(160deg, #f0f2f8 0%, #fafafa 60%, #eef0f8 100%);
+}
+
 .container { max-width: 1100px; margin: 0 auto; }
 
 .section-label {
@@ -217,45 +222,21 @@ body { font-family: var(--font); color: var(--text); background: var(--surface);
 
 /* ── Enrollment Form ── */
 .enroll-form {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 40px;
   max-width: 860px;
-  box-shadow: 0 4px 24px rgba(0,0,0,.06);
+  margin: 0 auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
 }
 
-.enroll-section-title {
-  font-size: 12px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .08em;
-  color: var(--primary); margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #eef0f8;
-}
+.enroll-section-title { display: none; } /* legacy — hidden */
 
+/* ── Legacy enroll-grid/field (kept for any remaining references) ── */
 .enroll-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 600px) { .enroll-grid { grid-template-columns: 1fr; } }
-
 .enroll-field { display: flex; flex-direction: column; gap: 5px; }
 .enroll-field label { font-size: 12px; font-weight: 600; color: var(--muted); }
-.enroll-field input,
-.enroll-field select {
-  border: 1.5px solid var(--border);
-  border-radius: 6px;
-  padding: 9px 12px;
-  font-family: var(--font);
-  font-size: 13px;
-  color: var(--text);
-  background: var(--bg);
-  outline: none;
-  transition: border-color .2s, box-shadow .2s;
-}
-.enroll-field input:focus,
-.enroll-field select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(73,76,138,.10);
-  background: #fff;
-}
 
 .enroll-note {
   margin-top: 24px;
@@ -271,24 +252,6 @@ body { font-family: var(--font); color: var(--text); background: var(--surface);
   align-items: flex-start;
 }
 .enroll-note i { color: var(--primary); font-size: 16px; flex-shrink: 0; margin-top: 2px; }
-
-.btn-enroll-submit {
-  margin-top: 28px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 13px 32px;
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-family: var(--font);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background .2s, box-shadow .2s;
-}
-.btn-enroll-submit:hover { background: var(--primary-d); box-shadow: 0 4px 16px rgba(73,76,138,.30); }
 
 .enroll-success {
   background: #f0fdf4;
@@ -316,15 +279,33 @@ body { font-family: var(--font); color: var(--text); background: var(--surface);
   max-width: 860px;
 }
 
+/* ── enroll-input (legacy step form) ── */
+.enroll-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  box-sizing: border-box;
+}
+.enroll-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(73,76,138,.10);
+  background: #fff;
+}
+
 /* ── Footer ── */
 .footer {
   background: var(--primary);
   padding: 0;
   color: rgba(255,255,255,.75);
 }
-
 .footer-inner { max-width: 1100px; margin: 0 auto; padding: 56px 32px 24px; }
-
 .footer-top {
   display: grid;
   grid-template-columns: 1.2fr 2fr;
@@ -334,36 +315,313 @@ body { font-family: var(--font); color: var(--text); background: var(--surface);
   border-bottom: 1px solid rgba(255,255,255,.12);
 }
 @media (max-width: 700px) { .footer-top { grid-template-columns: 1fr; } }
-
 .footer-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .footer-brand img { width: 44px; height: 44px; object-fit: contain; }
 .footer-school { font-size: 14px; font-weight: 700; color: #fff; }
 .footer-tagline { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 2px; }
 .footer-desc { font-size: 13px; color: rgba(255,255,255,.60); line-height: 1.7; }
-
-.footer-links-col {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
+.footer-links-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 @media (max-width: 500px) { .footer-links-col { grid-template-columns: 1fr 1fr; } }
-
-.footer-link-title {
-  font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .1em;
-  color: rgba(255,255,255,.45);
-  margin-bottom: 12px;
-}
-
+.footer-link-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.45); margin-bottom: 12px; }
 .footer-link-group { display: flex; flex-direction: column; gap: 8px; }
-.footer-link-group a {
-  font-size: 13px; color: rgba(255,255,255,.70);
-  text-decoration: none; transition: color .2s;
-}
+.footer-link-group a { font-size: 13px; color: rgba(255,255,255,.70); text-decoration: none; transition: color .2s; }
 .footer-link-group a:hover { color: #fff; }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: rgba(255,255,255,.40); }
 
-.footer-bottom {
-  display: flex; justify-content: space-between; align-items: center;
-  flex-wrap: wrap; gap: 8px;
-  font-size: 12px; color: rgba(255,255,255,.40);
+/* ── Validation error styles ── */
+.input-error, .enroll-input.input-error {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220,38,38,.12) !important;
+  background: #fff5f5 !important;
+}
+.field-error {
+  color: #dc2626; font-size: 11px; font-weight: 600;
+  margin-top: 4px; display: flex; align-items: center; gap: 4px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SINGLE-PAGE ENROLLMENT FORM — CLEAN & SLEEK
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Section card ── */
+.ef-section {
+  background: #fff;
+  border: 1px solid #e2e5f0;
+  border-radius: 14px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(73,76,138,.07), 0 1px 3px rgba(0,0,0,.04);
+  transition: box-shadow .2s;
+}
+.ef-section:hover {
+  box-shadow: 0 4px 20px rgba(73,76,138,.11), 0 1px 4px rgba(0,0,0,.05);
+}
+
+/* ── Section header — coloured left accent ── */
+.ef-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, #494C8A 0%, #6366b8 100%);
+  padding: 13px 22px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.ef-section-header::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.7);
+  flex-shrink: 0;
+}
+
+/* ── Section body ── */
+.ef-section-body {
+  padding: 24px 22px;
+}
+
+/* ── Privacy consent card ── */
+.ef-section:first-of-type .ef-section-header {
+  background: linear-gradient(90deg, #1e3a5f 0%, #2d5282 100%);
+}
+.ef-section:first-of-type .ef-section-body {
+  background: #f8faff;
+}
+
+/* ── Notice bar ── */
+.ef-notice {
+  background: linear-gradient(90deg, #eef0f8 0%, #f5f6fb 100%);
+  border-left: 4px solid #494C8A;
+  border-radius: 8px;
+  padding: 13px 18px;
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  line-height: 1.7;
+  box-shadow: 0 1px 4px rgba(73,76,138,.08);
+}
+.ef-notice i { color: #494C8A; font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+
+/* ── Grid layouts ── */
+.ef-grid { display: grid; gap: 16px; }
+.ef-2col { grid-template-columns: 1fr 1fr; }
+.ef-3col { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 720px) {
+  .ef-2col, .ef-3col { grid-template-columns: 1fr; }
+}
+
+/* ── Field ── */
+.ef-field { display: flex; flex-direction: column; gap: 6px; }
+
+.ef-field label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* Required asterisk colour */
+.ef-field label span[style*="color:#d97706"] { font-size: 10px; }
+
+/* ── Input / Select ── */
+.ef-input {
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  color: #111827;
+  background: #f9fafb;
+  outline: none;
+  width: 100%;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.ef-input::placeholder { color: #9ca3af; }
+.ef-input:focus {
+  border-color: #494C8A;
+  box-shadow: 0 0 0 3px rgba(73,76,138,.13);
+  background: #fff;
+}
+select.ef-input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* ── Radio toggle (New / Returning) ── */
+.ef-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+
+.ef-radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  padding: 9px 18px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  transition: border-color .2s, background .2s, color .2s;
+  user-select: none;
+}
+.ef-radio-label:has(input:checked) {
+  border-color: #494C8A;
+  background: #eef0f8;
+  color: #494C8A;
+}
+.ef-radio-label input[type="radio"] {
+  accent-color: #494C8A;
+  width: 15px;
+  height: 15px;
+}
+
+/* ── Attachment info boxes ── */
+#new-student-docs, #old-student-docs {
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  border-left: 4px solid #0ea5e9;
+  background: #f0f9ff;
+  color: #0c4a6e;
+}
+#old-student-docs {
+  border-left-color: #10b981;
+  background: #f0fdf4;
+  color: #064e3b;
+}
+
+/* ── Privacy consent checkbox ── */
+#privacy_consent {
+  width: 18px;
+  height: 18px;
+  accent-color: #494C8A;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Submit button ── */
+.btn-enroll-submit {
+  background: linear-gradient(135deg, #494C8A 0%, #6366b8 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 48px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 16px rgba(73,76,138,.35);
+  transition: transform .15s, box-shadow .15s, filter .15s;
+  letter-spacing: .02em;
+}
+.btn-enroll-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(73,76,138,.40);
+  filter: brightness(1.06);
+}
+.btn-enroll-submit:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(73,76,138,.30);
+}
+
+/* ── "Enroll Another Child" dashed button ── */
+.ef-add-child-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border: 2px dashed #494C8A;
+  border-radius: 10px;
+  background: transparent;
+  color: #494C8A;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+  margin-bottom: 24px;
+}
+.ef-add-child-btn:hover {
+  background: #eef0f8;
+}
+
+/* ── Error states ── */
+.ef-input-error {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220,38,38,.12) !important;
+  background: #fff5f5 !important;
+}
+.ef-error {
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Section divider label (inside body) ── */
+.ef-divider {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #9ca3af;
+  margin: 20px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ef-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+/* ── File input styling ── */
+input[type="file"].ef-input {
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: #6b7280;
+}
+input[type="file"].ef-input::-webkit-file-upload-button {
+  background: #494C8A;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 10px;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .ef-section-body { padding: 16px 14px; }
+  .ef-section-header { padding: 11px 14px; }
+  .btn-enroll-submit { width: 100%; justify-content: center; padding: 14px 24px; }
 }

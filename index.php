@@ -26,42 +26,59 @@ elseif(empty($password))
 }
 else{
           //process inputs
-          $sql = "select * from users where email = ?";
+          $sql = "SELECT * FROM users WHERE email = ?";
           $stmt = $conn->prepare($sql);
-          $stmt -> bind_param("s", $email);
-          //statement execute
-          $stmt ->execute();
-
+          $stmt->bind_param("s", $email);
+          $stmt->execute();
           $result = $stmt->get_result();
-          //check number of rows
-          if($result->num_rows > 0){
-            //email is correct
-            $row =$result->fetch_assoc(); //gets pass from db
-            $db_password = $row['password'];
-            if (password_verify($password, $db_password)) {
-              if (!$row['is_active']) {
-                $password_err = "This account has been deactivated. Contact your administrator.";
+
+          if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+
+            // Check lockout (3 failed attempts)
+            if (!empty($row['locked_at'])) {
+              $locked_since = strtotime($row['locked_at']);
+              $lockout_mins = 30;
+              if (time() - $locked_since < $lockout_mins * 60) {
+                $remaining = ceil(($lockout_mins * 60 - (time() - $locked_since)) / 60);
+                $password_err = "Account locked due to too many failed attempts. Try again in $remaining minute(s). Contact superadmin to unlock.";
               } else {
-                $_SESSION['name']    = $row["name"];
-                $_SESSION['role']    = $row["role"];
-                $_SESSION['user_id'] = $row["id"];
-                if(isset($_POST['remember'])){
-                  $remember = $_POST['remember'];
-                  setcookie("cookie_email", $email, time() + 60*60*24*30, '/');
-                  setcookie("cookie_remember", $remember, time() + 60*60*24*30, '/');
-                } else {
-                  if(isset($_COOKIE['cookie_email'])){
-                    setcookie("cookie_email", $email, time() - 60*60*24*30, '/'); 
-                  }
-                  if(isset($_COOKIE['cookie_remember'])){
-                    setcookie("cookie_remember", $remember, time() - 60*60*24*30, '/');
-                  }
-                }
-                header("location: pages/dashboard.php");
-                exit();
+                // Auto-unlock after 30 min
+                $conn->query("UPDATE users SET failed_attempts=0, locked_at=NULL WHERE id={$row['id']}");
+                $row['locked_at'] = null;
+                $row['failed_attempts'] = 0;
               }
-            } else {
-              $password_err = "Incorrect password";
+            }
+
+            if (empty($password_err)) {
+              if (password_verify($password, $row['password'])) {
+                if (!$row['is_active']) {
+                  $password_err = "This account has been deactivated. Contact your administrator.";
+                } else {
+                  // Reset failed attempts on success
+                  $conn->query("UPDATE users SET failed_attempts=0, locked_at=NULL WHERE id={$row['id']}");
+                  $_SESSION['name']    = $row['name'];
+                  $_SESSION['role']    = $row['role'];
+                  $_SESSION['user_id'] = $row['id'];
+                  if (isset($_POST['remember'])) {
+                    setcookie("cookie_email", $email, time() + 60*60*24*30, '/');
+                    setcookie("cookie_remember", '1', time() + 60*60*24*30, '/');
+                  }
+                  header("location: pages/dashboard.php");
+                  exit();
+                }
+              } else {
+                // Increment failed attempts
+                $new_attempts = ($row['failed_attempts'] ?? 0) + 1;
+                if ($new_attempts >= 3) {
+                  $conn->query("UPDATE users SET failed_attempts=$new_attempts, locked_at=NOW() WHERE id={$row['id']}");
+                  $password_err = "Account locked after 3 failed attempts. Contact your superadmin to unlock.";
+                } else {
+                  $conn->query("UPDATE users SET failed_attempts=$new_attempts WHERE id={$row['id']}");
+                  $remaining_tries = 3 - $new_attempts;
+                  $password_err = "Incorrect password. $remaining_tries attempt(s) remaining before lockout.";
+                }
+              }
             }
           } else {
             $email_err = "Email is not registered";

@@ -35,6 +35,42 @@ $total_fees = array_sum(array_column($fees_payments, 'amount'));
 $total_paid = array_sum(array_column($fees_payments, 'amount_paid'));
 $total_bal  = array_sum(array_column($fees_payments, 'balance'));
 
+// Auto-apply SPED fee if student is flagged
+if (!empty($student['is_sped'])) {
+  $sped_fee = $conn->query("
+    SELECT f.* FROM fees f
+    WHERE f.fee_type = 'sped' AND f.school_year_id = $sy_id
+    AND f.grade_level_id = {$student['grade_level_id']}
+    LIMIT 1
+  ")->fetch_assoc();
+
+  if ($sped_fee) {
+    // Check if already in payments
+    $already = false;
+    foreach ($fees_payments as $fp) {
+      if ($fp['fee_name'] === $sped_fee['name']) { $already = true; break; }
+    }
+    if (!$already) {
+      $fees_payments[] = [
+        'fee_name' => $sped_fee['name'] . ' (SPED)',
+        'amount'   => $sped_fee['amount'],
+        'amount_paid' => 0,
+        'balance'  => $sped_fee['amount'],
+        'status'   => 'unpaid',
+        'paid_at'  => null,
+        'or_number' => null,
+        'payment_method' => null,
+        'payment_plan' => null,
+        'surcharge' => 0,
+        'proof_file' => null,
+        'payment_id' => null,
+      ];
+      $total_fees += $sped_fee['amount'];
+      $total_bal  += $sped_fee['amount'];
+    }
+  }
+}
+
 // Discounts
 $discounts = $conn->query("
   SELECT * FROM discounts WHERE student_id=$student_id AND school_year_id=$sy_id

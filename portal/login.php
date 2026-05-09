@@ -8,8 +8,45 @@ if (isset($_SESSION['parent_id'])) {
 
 require_once '../mysql/db.php';
 
-$error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$error   = '';
+$success = '';
+$mode    = $_GET['mode'] ?? 'login'; // 'login' or 'reset'
+
+// ── Password Reset ──────────────────────────────────────────
+if ($mode === 'reset' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  $email    = trim($_POST['email']    ?? '');
+  $new_pass = trim($_POST['new_pass'] ?? '');
+  $confirm  = trim($_POST['confirm']  ?? '');
+
+  if (empty($email) || empty($new_pass) || empty($confirm)) {
+    $error = "All fields are required.";
+  } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $error = "Enter a valid email address.";
+  } elseif (strlen($new_pass) < 6) {
+    $error = "Password must be at least 6 characters.";
+  } elseif ($new_pass !== $confirm) {
+    $error = "Passwords do not match.";
+  } else {
+    $stmt = $conn->prepare("SELECT id FROM parent_accounts WHERE email=? AND is_active=1 LIMIT 1");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $found = $stmt->get_result()->fetch_assoc();
+
+    if (!$found) {
+      $error = "No active account found with that email address.";
+    } else {
+      $hashed = password_hash($new_pass, PASSWORD_DEFAULT);
+      $stmt2  = $conn->prepare("UPDATE parent_accounts SET password=? WHERE id=?");
+      $stmt2->bind_param("si", $hashed, $found['id']);
+      $stmt2->execute();
+      $success = "Password updated successfully. You can now log in.";
+      $mode = 'login';
+    }
+  }
+}
+
+// ── Login ───────────────────────────────────────────────────
+if ($mode === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($success)) {
   $email    = trim($_POST['email'] ?? '');
   $password = trim($_POST['password'] ?? '');
 
@@ -21,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($parent && password_verify($password, $parent['password'])) {
     $_SESSION['parent_id']   = $parent['id'];
     $_SESSION['parent_name'] = $parent['name'];
-    $_SESSION['student_id']  = $parent['student_id'];
+    $_SESSION['student_id']  = null;
     header('Location: dashboard.php'); exit();
   } else {
     $error = "Invalid email or password.";
@@ -49,13 +86,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($error): ?>
     <div class="portal-error"><i class="bi bi-exclamation-triangle-fill"></i> <?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
+    <?php if ($success): ?>
+    <div style="background:#dcfce7;color:#166534;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+      <i class="bi bi-check-circle-fill"></i> <?= htmlspecialchars($success) ?>
+    </div>
+    <?php endif; ?>
 
+    <?php if ($mode === 'reset'): ?>
+    <!-- ── RESET PASSWORD FORM ── -->
+    <form method="POST" action="login.php?mode=reset">
+      <div class="portal-field">
+        <label>Email Address</label>
+        <div class="portal-input-wrap">
+          <i class="bi bi-envelope"></i>
+          <input type="email" name="email" required placeholder="parent@email.com"
+                 value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"/>
+        </div>
+      </div>
+      <div class="portal-field">
+        <label>New Password</label>
+        <div class="portal-input-wrap">
+          <i class="bi bi-lock-fill"></i>
+          <input type="password" name="new_pass" required placeholder="Min. 6 characters"/>
+        </div>
+      </div>
+      <div class="portal-field">
+        <label>Confirm New Password</label>
+        <div class="portal-input-wrap">
+          <i class="bi bi-lock-fill"></i>
+          <input type="password" name="confirm" required placeholder="Repeat password"/>
+        </div>
+      </div>
+      <button type="submit" class="portal-btn-login">Set New Password</button>
+    </form>
+    <div class="portal-links">
+      <a href="login.php">← Back to Login</a>
+    </div>
+
+    <?php else: ?>
+    <!-- ── LOGIN FORM ── -->
     <form method="POST" action="login.php">
       <div class="portal-field">
         <label>Email Address</label>
         <div class="portal-input-wrap">
           <i class="bi bi-envelope"></i>
-          <input type="email" name="email" required placeholder="parent@email.com" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"/>
+          <input type="email" name="email" required placeholder="parent@email.com"
+                 value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"/>
         </div>
       </div>
       <div class="portal-field">
@@ -67,12 +143,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
       <button type="submit" class="portal-btn-login">Log In</button>
     </form>
-
+    <div style="text-align:center;margin-top:10px;">
+      <a href="login.php?mode=reset" style="font-size:13px;color:var(--primary);text-decoration:none;font-weight:500;">
+        <i class="bi bi-key"></i> Forgot your password?
+      </a>
+    </div>
     <div class="portal-links">
       <a href="../home.php">← Back to School Website</a>
       <span>·</span>
       <a href="../home.php#enroll">New enrollment? Apply here</a>
     </div>
+    <?php endif; ?>
+
   </div>
 </div>
 </body>

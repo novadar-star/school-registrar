@@ -13,13 +13,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $stmt->bind_param("si", $status, $enroll_id);
     $stmt->execute();
 
-    // When approved (enrolled), auto-create clearance record
-    if ($status === 'enrolled') {
-      $enroll = $conn->query("SELECT student_id, school_year_id FROM enrollments WHERE id=$enroll_id")->fetch_assoc();
-      if ($enroll) {
-        $conn->query("INSERT IGNORE INTO clearance (student_id, school_year_id) VALUES ({$enroll['student_id']}, {$enroll['school_year_id']})");
+    $enroll = $conn->query("SELECT * FROM enrollments WHERE id=$enroll_id")->fetch_assoc();
+
+    if ($status === 'enrolled' && $enroll) {
+      $sid   = $enroll['student_id'];
+      $sy_id = $enroll['school_year_id'];
+      $gl_id = $enroll['grade_level_id'];
+
+      // Auto-assign fees: insert payment records for all fees of this grade/SY
+      $fees = $conn->query("SELECT * FROM fees WHERE grade_level_id=$gl_id AND school_year_id=$sy_id");
+      while ($fee = $fees->fetch_assoc()) {
+        $conn->query("INSERT IGNORE INTO payments (student_id, fee_id, amount_paid, balance, status)
+          VALUES ($sid, {$fee['id']}, 0, {$fee['amount']}, 'unpaid')");
+      }
+
+      // Notify all admin users
+      $admins = $conn->query("SELECT id FROM users WHERE is_active=1");
+      $student_name = $conn->query("SELECT CONCAT(first_name,' ',last_name) as n FROM students WHERE id=$sid")->fetch_assoc()['n'] ?? 'Student';
+      while ($admin = $admins->fetch_assoc()) {
+        $title = "Student Enrolled: $student_name";
+        $body  = "Enrollment approved. Fees have been auto-assigned.";
+        $link  = "student_profile.php?id=$sid";
+        $conn->query("INSERT INTO notifications (user_id, type, title, body, link) VALUES ({$admin['id']}, 'success', '$title', '$body', '$link')");
+      }
+
+      // Notify parent if exists
+      $parent = $conn->query("SELECT pa.id FROM parent_accounts pa JOIN parent_student_links psl ON psl.parent_id=pa.id WHERE psl.student_id=$sid LIMIT 1")->fetch_assoc();
+      // (parent notifications handled via portal — no users table link needed)
+
+      // Send approval email if parent account exists
+      require_once '../mysql/email_notifications.php';
+      $enroll_data = $conn->query("SELECT student_id, school_year_id FROM enrollments WHERE id=$enroll_id")->fetch_assoc();
+      if ($enroll_data) {
+        $sid_email = $enroll_data['student_id'];
+        $parent_email_row = $conn->query("SELECT pa.email, pa.name, s.first_name, s.last_name, g.name as grade FROM parent_accounts pa JOIN students s ON s.id=pa.student_id LEFT JOIN grade_levels g ON g.id=s.grade_level_id WHERE pa.student_id=$sid_email LIMIT 1")->fetch_assoc();
+        if ($parent_email_row) {
+          notifyEnrollmentApproved($parent_email_row['email'], $parent_email_row['name'], $parent_email_row['first_name'].' '.$parent_email_row['last_name'], $parent_email_row['grade']);
+        }
       }
     }
+
+    if ($status === 'dropped' && $enroll) {
+      $sid = $enroll['student_id'];
+      $student_name = $conn->query("SELECT CONCAT(first_name,' ',last_name) as n FROM students WHERE id=$sid")->fetch_assoc()['n'] ?? 'Student';
+      $admins = $conn->query("SELECT id FROM users WHERE is_active=1");
+      while ($admin = $admins->fetch_assoc()) {
+        $title = "Enrollment Dropped: $student_name";
+        $conn->query("INSERT INTO notifications (user_id, type, title, body) VALUES ({$admin['id']}, 'warning', '$title', 'Enrollment status changed to dropped.')");
+      }
+    }
+
+    // Audit log
+    $uid   = $_SESSION['user_id'] ?? 0;
+    $uname = $conn->real_escape_string($_SESSION['name'] ?? '');
+    $conn->query("INSERT INTO audit_log (user_id, user_name, action, target, target_id, details) VALUES ($uid, '$uname', 'update_enrollment_status', 'enrollment', $enroll_id, 'Status changed to $status')");
   }
   header("Location: enrollment.php?success=Status updated"); exit();
 }

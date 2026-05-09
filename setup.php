@@ -1,7 +1,4 @@
 <?php
-// One-time database setup script
-// Visit: https://your-app.up.railway.app/setup.php
-// DELETE THIS FILE after running it once
 
 require_once './mysql/db.php';
 

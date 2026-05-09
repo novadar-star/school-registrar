@@ -11,18 +11,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
   $student_id = intval($_POST['student_id']);
   $type       = trim($_POST['type'] ?? '');
   $percentage = floatval($_POST['percentage'] ?? 0);
+  $fixed_amount = floatval($_POST['fixed_amount'] ?? 0);
+  $child_number = intval($_POST['child_number'] ?? 1);
   $label      = trim($_POST['label'] ?? '');
   $notes      = trim($_POST['notes'] ?? '');
-  $allowed_types = ['employee','sibling','scholarship','other'];
+  $allowed_types = ['employee','sibling','scholarship','reservation','other'];
 
-  if ($student_id > 0 && in_array($type, $allowed_types) && $percentage > 0 && $percentage <= 100) {
-    $stmt = $conn->prepare("INSERT INTO discounts (student_id, school_year_id, type, percentage, label, notes) VALUES (?,?,?,?,?,?)");
-    $stmt->bind_param("iisdss", $student_id, $sy_id, $type, $percentage, $label, $notes);
+  if ($student_id > 0 && in_array($type, $allowed_types)) {
+    // Employee 1st child = 100% tuition (stored as percentage=100 but applied only to tuition)
+    if ($type === 'employee' && $child_number == 1) {
+      $percentage = 100;
+      $label = $label ?: 'Employee Discount (1st Child — 100% Tuition)';
+    }
+    // Reservation fee = fixed 5000
+    if ($type === 'reservation') {
+      $fixed_amount = 5000;
+      $label = $label ?: 'Reservation Fee (₱5,000)';
+    }
+    $stmt = $conn->prepare("INSERT INTO discounts (student_id, school_year_id, type, child_number, percentage, fixed_amount, label, notes) VALUES (?,?,?,?,?,?,?,?)");
+    $stmt->bind_param("iisiddss", $student_id, $sy_id, $type, $child_number, $percentage, $fixed_amount, $label, $notes);
     $stmt->execute()
       ? header("Location: discounts.php?success=Discount added")
       : header("Location: discounts.php?error=" . urlencode($conn->error));
   } else {
-    header("Location: discounts.php?error=" . urlencode("Invalid input. Check all fields."));
+    header("Location: discounts.php?error=" . urlencode("Invalid input."));
   }
   exit();
 }
@@ -173,17 +185,26 @@ $active_page = 'discounts';
           </div>
           <div class="form-group">
             <label>Discount Type *</label>
-            <select name="type" class="form-input" required>
+            <select name="type" class="form-input" required id="discount-type-sel" onchange="toggleDiscountFields()">
               <option value="">Select type</option>
               <option value="employee">Employee (Staff Child)</option>
               <option value="sibling">Sibling Discount</option>
               <option value="scholarship">Scholarship</option>
+              <option value="reservation">Reservation Fee (₱5,000)</option>
               <option value="other">Other</option>
             </select>
           </div>
-          <div class="form-group">
-            <label>Percentage (%) *</label>
-            <input type="number" name="percentage" class="form-input" step="0.01" min="0.01" max="100" required placeholder="e.g. 25.00"/>
+          <div class="form-group" id="child-number-field" style="display:none;">
+            <label>Child Number</label>
+            <select name="child_number" class="form-input">
+              <option value="1">1st Child (100% Tuition Free)</option>
+              <option value="2">2nd Child (Sibling Discount)</option>
+              <option value="3">3rd Child+</option>
+            </select>
+          </div>
+          <div class="form-group" id="percentage-field">
+            <label>Percentage (%) <span id="pct-note" style="font-size:11px;color:var(--color-muted);"></span></label>
+            <input type="number" name="percentage" class="form-input" step="0.01" min="0" max="100" placeholder="e.g. 25.00"/>
           </div>
           <div class="form-group">
             <label>Label</label>
@@ -209,6 +230,24 @@ $active_page = 'discounts';
   document.getElementById('btn-add-discount').onclick = () => modal.classList.add('open');
   document.getElementById('modal-close').onclick      = () => modal.classList.remove('open');
   document.getElementById('modal-cancel').onclick     = () => modal.classList.remove('open');
+
+  function toggleDiscountFields() {
+    const type = document.getElementById('discount-type-sel').value;
+    const childField = document.getElementById('child-number-field');
+    const pctField   = document.getElementById('percentage-field');
+    const pctNote    = document.getElementById('pct-note');
+    childField.style.display = (type === 'employee') ? 'block' : 'none';
+    if (type === 'employee') {
+      pctNote.textContent = '(auto: 100% for 1st child tuition)';
+      pctField.style.display = 'none';
+    } else if (type === 'reservation') {
+      pctNote.textContent = '(fixed ₱5,000)';
+      pctField.style.display = 'none';
+    } else {
+      pctNote.textContent = '';
+      pctField.style.display = 'block';
+    }
+  }
 </script>
 </body>
 </html>

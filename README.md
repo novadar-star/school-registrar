@@ -1,307 +1,182 @@
-# COJ Catholic Progressive School
-## Student Enrollment and Records Management System
+# COJ Catholic Progressive School — Enrollment System
 
-A web-based enrollment and records management system built for COJ Catholic Progressive School. Designed to replace manual, paper-based processes with a secure, organized, and accessible digital system serving both the school administration and the parent community.
-
----
-
-## System Overview
-
-| | |
-|---|---|
-| **School** | COJ Catholic Progressive School |
-| **Scope** | Junior High School — Grades 7 to 10  (subject to change once presentation is done) |
-| **Interfaces** | Admin Portal , Parent Portal,  Public Landing Page |
-| **Deployment** | LAN / Intranet (XAMPP) |
+A web-based enrollment and records management system built for **COJ Catholic Progressive School** (Junior High School, Grades 7–10). Developed as a capstone project by Group 5, Adamson University.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
+- **Backend:** PHP 8+, MySQL (MariaDB)
+- **Frontend:** HTML, CSS, Vanilla JS, Bootstrap Icons
+- **Local Deployment:** XAMPP
+- **Address Data:** Philippine PSGC JSON (Region → Province → City → Barangay)
+
+---
+
+## System Users
+
+| User | Access |
 |---|---|
-| Frontend | HTML5, CSS3, Vanilla JavaScript |
-| Backend | PHP 8.x |
-| Database | MySQL / MariaDB |
-| Server | Apache via XAMPP |
-| Charts | Chart.js 4.4 |
-| Export | SheetJS (xlsx) |
-| Tunnel (dev) | ngrok |
+| Superadmin | Full access — all modules + user/school year management |
+| Registrar | Enrollment, students, requirements |
+| Finance | Payments, fees, discounts |
+| Parent | Portal — enrollment status, documents, SOA |
 
 ---
 
-## Features
+## Admin Side Features
 
-### Public Landing Page (`home.php`)
-- School overview, mission & vision
-- Online enrollment form — no LRN required (assigned by registrar)
-- Auto-generates enrollment reference number (e.g. `ENR-2025-0001`)
-- Parent Portal and Admin Login links
-- Responsive footer with quick links
+### Dashboard
+- Total enrolled, pending, and dropped students
+- Charts: students per grade level, section distribution
+- Recent enrollment applications and payment summaries
 
-### Admin Portal (`index.php` → `pages/`)
+### Enrollment Management
+- View all enrollment applications submitted via the public form
+- Approve, reject, or update enrollment status (pending → registered → enrolled → dropped)
+- Assign section and payment plan per student
+- Reference number auto-generated per application (e.g. `ENR-2026-0001`)
 
-#### Dashboard
-- Stat cards: Total Students, Enrolled, Pending, Total Collection
-- Bar chart — students per grade level
-- Section enrollment table
-- Recent registrations
-- Payment summary (Paid / Partial / Unpaid)
-
-#### Student Records
-- Add, edit, archive students with photo upload
+### Students
+- View-only list of all enrolled students
+- Filter by grade level, student type (new/returning), and school year
 - Search by name or LRN
-- Filter by grade, status, school year
-- Pagination (10 per page)
-- Export to CSV (respects active filters)
-- Student profile with parent account creation
+- View individual student profile (personal info, academic, documents, parent account)
 
-#### Enrollment Management
-- Enroll students with section assignment
-- Status tracking: Pending → Enrolled → Dropped
-- Reference number per enrollment
-- Search by name, LRN, or reference number
-- Filter tabs by status
-- Auto-creates clearance record on approval
+### Requirements Tracker
+- Define required documents per student type (new, returning, or both)
+- View submission status per student: Missing → Submitted → Verified / Rejected
+- Admin can upload documents on behalf of students
+- Verify or reject submitted documents with optional reject reason
 
-#### Requirements Tracker
-- Define required documents per student type (new/returning)
-- View per-student document status: Missing / Submitted / Verified
-- Verify or reject uploaded documents
-- Default requirements: PSA, Form 138, Good Moral, 2x2 Photo, Baptismal
-
-#### Payments
+### Payments
 - Record payments per student per fee
-- Payment methods: Cash, Check, Bank Transfer
-- Upload proof of payment
-- OR number tracking
-- View Statement of Account (SOA) per student
-- Printable SOA
+- Track amount paid, balance, OR number, payment method, and proof of payment
+- Confirm parent-uploaded payment receipts
+- Payment plan support: Annual, Semi-Annual, Quarterly, Monthly
 
-#### Fee Structure
-- Define fees per grade level per school year
-- Add, edit, delete fee types
-- Auto-computes balance on payment
+### Fees
+- Set fee breakdown per grade level per school year
+- Fee types: Tuition, Miscellaneous, PTA Fund, Development Fee, Books, SPED, Reservation
+- Fees auto-compute total per student based on grade level
 
-#### Student Clearance
-- 3-department sign-off: Library, Registrar, Finance
-- Role-based: Finance clears Finance; Registrar clears Library + Registrar
-- Undo sign-off support
-- Auto-created when student is enrolled
+### Discounts
+- Apply discounts per student: Employee, Sibling, Scholarship, Reservation, Other
+- Supports percentage-based or fixed amount discounts
 
-#### Reports
-- Enrollment by grade (new/old/enrolled/pending/dropped)
-- Payment summary by grade (paid/partial/unpaid/collection total)
-- Filter by school year
-- Export both reports to Excel (.xlsx)
+### Reports
+- Enrollment summary: new vs returning, enrolled vs pending
+- Payment summary: total collected, paid, unpaid balances
+- Exportable to CSV
 
-#### Notes
-- Personal notes per user (not shared)
-- Categories: General, Academic, Meeting, Concern
-- Search and filter
-- Auto-save (3 seconds), Ctrl+S shortcut
-- Unsaved changes warning
+### Notifications
+- In-system alerts for admin staff
+- Triggered on new enrollment applications, document submissions, and payment uploads
 
-#### Archived Records
-- View archived students
-- Restore or permanently delete (superadmin only)
+### Users (Superadmin only)
+- Create and manage admin accounts (superadmin, registrar, finance)
+- Account lockout support after failed login attempts
 
-#### User Management (Superadmin only)
-- Add, edit, activate/deactivate accounts
-- Roles: Superadmin, Registrar, Finance
-
-#### School Year Management (Superadmin only)
-- Add new school years
-- Set active school year
-
-### Parent Portal (`portal/`)
-
-#### Login
-- Separate session from admin portal
-- Linked to a specific student record
-
-#### Dashboard
-- Student info card with enrollment status
-- Summary: documents verified, total paid, clearance status
-
-#### Requirements Upload
-- View required documents with status
-- Upload files (JPG, PNG, PDF, max 5MB)
-- Real-time status: Missing / Under Review / Verified
-
-#### Statement of Account
-- View all fees, amounts, payments, balances
-- Upload proof of payment per fee
-- View existing proof files
-
-#### Clearance Status
-- Real-time view of Library, Registrar, Finance sign-offs
-- Shows cleared date per department
+### School Years (Superadmin only)
+- Manage school years, set active year
+- All enrollment, fee, and payment data is scoped per school year
 
 ---
 
-## Database Schema
+## Parent Portal Features
 
-```
-users               — admin accounts (superadmin, registrar, finance)
-parent_accounts     — parent/guardian portal accounts
-school_years        — enrollment periods (e.g. SY 2025-2026)
-grade_levels        — Grade 7 to Grade 10
-sections            — Newton, Einstein, Curie, Franklin (per grade)
-students            — student records
-enrollments         — enrollment status per student per SY + ref number
-fees                — fee types per grade per SY
-payments            — payment records with method, proof, OR number
-requirements        — required document types
-student_requirements — per-student document submissions and status
-clearance           — 3-dept clearance sign-offs per student per SY
-notes               — personal notes per admin user
-```
-
----
-
-## Setup Instructions
+### Dashboard
+- Welcome screen with active school year
+- Multi-child switcher (one parent account can have multiple enrolled children)
+- Visual enrollment progress timeline: Applied → Documents → Payment → Enrolled
+- Quick summary: documents verified count, total paid, outstanding balance
+- Fee breakdown preview with payment plan options
 
 ### Requirements
-- XAMPP (Apache + MySQL)
-- PHP 8.0+
-- Browser (Chrome recommended)
+- View all required documents and their status
+- Upload documents (JPG, PNG, PDF — max 3MB)
+- Re-upload rejected documents
+- See reject reason if a document was declined
 
-### Installation
-
-**1.** Copy project to:
-```
-C:\xampp\htdocs\school-registrar\
-```
-
-**2.** Start Apache and MySQL in XAMPP Control Panel.
-
-**3.** Open phpMyAdmin → create database `school_registrar`.
-
-**4.** Run the SQL in `mysql/initialization.php` in the phpMyAdmin SQL tab.
-
-**5.** Open browser:
-```
-http://localhost/school-registrar/home.php        ← Landing page
-http://localhost/school-registrar/                ← Admin login
-http://localhost/school-registrar/portal/login.php ← Parent portal
-```
-
-**6.** Default superadmin:
-```
-Email:    superadmin@gmail.com
-Password: Admin@1234
-
-Registrar
-Email: timothy@gmail.com
-Password: timothy
-
-Parent Portal (=for demo)
-Email: darla.nova.sumanting360@adamson.edu.ph
-Password: darla
-```
-> Change this immediately after first login.
+### Statement of Account (SOA)
+- Full fee breakdown per grade level
+- Payment history with OR numbers and dates
+- Upload proof of payment (GCash receipt, bank transfer screenshot)
+- Balance tracking
 
 ---
 
-## Roles
+## Public Enrollment Form
 
-| Role | Access |
+Accessible at `home.php` — no login required.
+
+- Multi-section form: Student Info, Education History, Parent/Guardian Info, Address, Additional Children, Attachments
+- Philippine address cascade: Region → Province → City/Municipality → Barangay (PSGC data)
+- Supports enrolling multiple children in one submission
+- Auto-creates parent portal account with password set by parent during submission
+- Generates reference number per child (e.g. `ENR-2026-0001`)
+- Notifies all admin staff on submission
+
+---
+
+## Database
+
+19 tables with normalized schema and proper foreign key relationships.
+
+| Table | Purpose |
 |---|---|
-| Superadmin | Full access + user management + school year management |
-| Registrar | Student records, enrollment, requirements, clearance (library + registrar) |
-| Finance | Payments, SOA, fees, clearance (finance only) |
+| `users` | Admin staff accounts |
+| `parent_accounts` | Parent portal accounts |
+| `parent_student_links` | Many-to-many: one parent → many students |
+| `students` | Core student records |
+| `grade_levels` | Grade 7–10 reference |
+| `sections` | Sections per grade level |
+| `school_years` | School year management |
+| `enrollments` | One enrollment record per student per school year |
+| `enrollment_timeline` | Step-by-step enrollment progress log |
+| `requirements` | Master list of required documents |
+| `student_requirements` | Per-student document submission and status |
+| `fees` | Fee breakdown per grade per school year |
+| `payments` | Payment transactions per student |
+| `discounts` | Scholarship and discount records |
+| `notifications` | Admin in-system alerts |
+| `parent_notifications` | Parent in-system alerts |
+| `audit_log` | Admin action history |
+| `clearance` | Per-department clearance status |
+| `promotions` | School year promotion log |
 
 ---
 
-## Folder Structure
+## Setup (XAMPP)
 
-```
-school-registrar/
-├── home.php                    # Public landing page
-├── index.php                   # Admin login
-├── logout.php
-├── css/
-│   ├── styles.css              # Global design system
-│   ├── home.css                # Landing page
-│   ├── portal.css              # Parent portal
-│   ├── login.css
-│   ├── dashboard.css
-│   ├── students.css
-│   ├── enrollment.css
-│   ├── payments.css
-│   ├── fees.css
-│   ├── requirements.css
-│   ├── clearance.css
-│   ├── reports.css
-│   ├── notes.css
-│   ├── profile.css
-│   ├── add.css
-│   ├── users.css
-│   └── archived.css
-├── js/
-│   ├── nav.js
-│   ├── notes.js
-│   ├── students.js
-│   └── add.js
-├── pages/
-│   ├── dashboard.php
-│   ├── students.php
-│   ├── enrollment.php
-│   ├── payments.php
-│   ├── fees.php
-│   ├── requirements.php
-│   ├── clearance.php
-│   ├── soa.php
-│   ├── reports.php
-│   ├── notes.php
-│   ├── users.php
-│   ├── school_years.php
-│   ├── archived.php
-│   ├── student_profile.php
-│   ├── add.php / edit.php / delete.php
-│   ├── export.php
-│   ├── create_parent.php
-│   └── uploads/
-├── portal/
-│   ├── login.php
-│   ├── logout.php
-│   ├── dashboard.php
-│   ├── requirements.php
-│   ├── soa.php
-│   ├── clearance.php
-│   └── includes/
-│       ├── auth.php
-│       └── nav.php
-├── mysql/
-│   ├── db.php
-│   └── initialization.php
-└── images/
-    ├── COJ.png
-    └── login-bg.png
-```
+1. Clone or copy project to `C:\xampp\htdocs\school-registrar\`
+2. Start Apache and MySQL in XAMPP Control Panel
+3. Open `http://localhost/school-registrar/setup.php` to initialize the database
+4. Log in at `http://localhost/school-registrar/index.php`
+
+**Default admin credentials:**
+- Email: `superadmin@school.com`
+- Password: `Admin@1234`
+
+> Change the default password after first login.
 
 ---
 
-## Security
+## Limitations
 
-- Prepared statements throughout — no SQL injection
-- Passwords hashed with bcrypt (`password_hash`)
-- Session-based auth on every page
-- Role checks on restricted pages
-- File uploads restricted to image/PDF MIME types
-- LAN/intranet deployment — data stays on-premises
-- Separate session namespaces for admin and parent portals
+- No email notifications in current deployment (SMTP not configured)
+- No attendance, grading, or report card system — out of scope
+- Parent accounts created through enrollment form only
+- Single school deployment only
 
 ---
 
-## Known Limitations 
+## Developed By
 
-- No student attendance tracking (teacher-encoded)
-- No grade/marks recording or report card generation
-- No Form 137 / SF10 printing
-- No email notifications
-- Single-school deployment only
-- Parent portal requires manual account creation by registrar
-
----
+Group 5 — Adamson University, Information Management
+- Sumanting, Darla Nova
+- Singh, Gurjindier
+- Garra, Aaron James
+- Lastrilla, Timothy James
+- Moloboco, Juan Gabriel
+- Raduban, James Adrian

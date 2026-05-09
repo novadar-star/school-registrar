@@ -54,6 +54,13 @@ if (isset($_GET['toggle_id'])) {
   header("Location: users.php?success=User status updated"); exit();
 }
 
+// ── Unlock locked account ──────────────────────────────────
+if (isset($_GET['unlock_id'])) {
+  $uid2 = intval($_GET['unlock_id']);
+  $conn->query("UPDATE users SET failed_attempts=0, locked_at=NULL WHERE id=$uid2");
+  header("Location: users.php?success=Account unlocked successfully"); exit();
+}
+
 if (!empty($_GET['success'])) $success_message = $_GET['success'];
 
 // ── Fetch for edit modal ───────────────────────────────────
@@ -141,6 +148,11 @@ $users = $conn->query("SELECT * FROM users ORDER BY role ASC, name ASC");
                    onclick="return confirm('<?= $u['is_active'] ? 'Deactivate' : 'Activate' ?> this user?')">
                   <?= $u['is_active'] ? 'Deactivate' : 'Activate' ?>
                 </a>
+                <?php if (!empty($u['locked_at'])): ?>
+                  <a href="users.php?unlock_id=<?= $u['id'] ?>" class="btn-u-activate" onclick="return confirm('Unlock this account?')">
+                    <i class="bi bi-unlock-fill"></i> Unlock
+                  </a>
+                <?php endif; ?>
               <?php endif; ?>
             </td>
           </tr>

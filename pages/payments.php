@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $or_number   = trim($_POST['or_number'] ?? '');
   $notes       = trim($_POST['notes'] ?? '');
   $paid_at     = $_POST['paid_at'] ?? date('Y-m-d');
-  $pay_method  = in_array($_POST['payment_method'] ?? '', ['cash','check','bank_transfer'])
+  $pay_method  = in_array($_POST['payment_method'] ?? '', ['cash','check','bank_transfer','gcash','maya','other'])
                  ? $_POST['payment_method'] : 'cash';
   $payment_plan = in_array($_POST['payment_plan'] ?? '', ['annual','semi_annual','quarterly','monthly'])
                   ? $_POST['payment_plan'] : 'annual';
@@ -26,11 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $balance    = max(0, $fee_amount - $amount_paid);
   $status     = $balance <= 0 ? 'paid' : ($amount_paid > 0 ? 'partial' : 'unpaid');
 
-  // Proof of payment upload
+  // Proof of payment upload (3MB limit)
   $proof_file = '';
   if (!empty($_FILES['proof_file']['tmp_name'])) {
-    $allowed = ['image/jpeg','image/png','image/webp','application/pdf'];
-    if (in_array($_FILES['proof_file']['type'], $allowed)) {
+    $allowed  = ['image/jpeg','image/png','image/webp','application/pdf'];
+    $max_size = 3 * 1024 * 1024;
+    if (in_array($_FILES['proof_file']['type'], $allowed) && $_FILES['proof_file']['size'] <= $max_size) {
       $proof_file = 'proof_' . uniqid() . '_' . basename($_FILES['proof_file']['name']);
       move_uploaded_file($_FILES['proof_file']['tmp_name'], "uploads/" . $proof_file);
     }
@@ -48,6 +49,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $stmt->execute()
     ? header("Location: payments.php?success=Payment recorded")
     : header("Location: payments.php?error=" . urlencode($conn->error));
+
+  if ($stmt->affected_rows >= 0 && $or_number) {
+    require_once '../mysql/email_notifications.php';
+    $parent_pay = $conn->query("SELECT pa.email, pa.name, s.first_name, s.last_name FROM parent_accounts pa JOIN students s ON s.id=pa.student_id WHERE pa.student_id=$student_id LIMIT 1")->fetch_assoc();
+    if ($parent_pay) {
+      notifyPaymentReceived($parent_pay['email'], $parent_pay['name'], $parent_pay['first_name'].' '.$parent_pay['last_name'], $amount_paid, $or_number);
+    }
+  }
   exit();
 }
 
@@ -200,6 +209,9 @@ $active_page = 'payments';
               <option value="cash">Cash</option>
               <option value="check">Check</option>
               <option value="bank_transfer">Bank Transfer</option>
+              <option value="gcash">GCash</option>
+              <option value="maya">Maya</option>
+              <option value="other">Other</option>
             </select>
           </div>
           <div class="form-group">

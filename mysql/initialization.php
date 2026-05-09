@@ -365,3 +365,156 @@ ALTER TABLE `payments`
   ADD COLUMN IF NOT EXISTS `payment_plan` ENUM('annual','semi_annual','quarterly','monthly') DEFAULT 'annual' AFTER `payment_method`;
 ALTER TABLE `payments`
   ADD COLUMN IF NOT EXISTS `surcharge` DECIMAL(10,2) DEFAULT 0.00 AFTER `payment_plan`;
+
+-- ============================================================
+--  AUDIT LOG
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `audit_log` (
+  `id`         INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id`    INT DEFAULT NULL,
+  `user_name`  VARCHAR(150) DEFAULT NULL,
+  `action`     VARCHAR(100) NOT NULL,
+  `target`     VARCHAR(100) DEFAULT NULL,
+  `target_id`  INT DEFAULT NULL,
+  `details`    TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
+--  NOTIFICATIONS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id`         INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id`    INT NOT NULL,
+  `type`       VARCHAR(50) NOT NULL DEFAULT 'info',
+  `title`      VARCHAR(150) NOT NULL,
+  `body`       TEXT DEFAULT NULL,
+  `link`       VARCHAR(255) DEFAULT NULL,
+  `is_read`    TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` DATETIME DEFAULT current_timestamp(),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
+--  SCHOOL YEAR PROMOTION LOG
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `promotions` (
+  `id`              INT AUTO_INCREMENT PRIMARY KEY,
+  `from_sy_id`      INT NOT NULL,
+  `to_sy_id`        INT NOT NULL,
+  `promoted_by`     INT NOT NULL,
+  `students_count`  INT DEFAULT 0,
+  `promoted_at`     DATETIME DEFAULT current_timestamp(),
+  FOREIGN KEY (`from_sy_id`) REFERENCES `school_years`(`id`),
+  FOREIGN KEY (`to_sy_id`)   REFERENCES `school_years`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ============================================================
+--  PHASE 3 — MULTI-CHILD PARENT PORTAL
+-- ============================================================
+
+-- Parent accounts: add personal/address fields
+ALTER TABLE `parent_accounts`
+  ADD COLUMN IF NOT EXISTS `province`         VARCHAR(100) DEFAULT NULL AFTER `contact`,
+  ADD COLUMN IF NOT EXISTS `city_municipality` VARCHAR(100) DEFAULT NULL AFTER `province`,
+  ADD COLUMN IF NOT EXISTS `barangay`         VARCHAR(100) DEFAULT NULL AFTER `city_municipality`,
+  ADD COLUMN IF NOT EXISTS `house_address`    VARCHAR(255) DEFAULT NULL AFTER `barangay`,
+  ADD COLUMN IF NOT EXISTS `birthday`         DATE         DEFAULT NULL AFTER `house_address`,
+  ADD COLUMN IF NOT EXISTS `sex`              ENUM('male','female') DEFAULT NULL AFTER `birthday`,
+  ADD COLUMN IF NOT EXISTS `civil_status`     VARCHAR(50)  DEFAULT NULL AFTER `sex`,
+  ADD COLUMN IF NOT EXISTS `religion`         VARCHAR(100) DEFAULT NULL AFTER `civil_status`;
+
+-- Junction table: one parent → many students
+CREATE TABLE IF NOT EXISTS `parent_student_links` (
+  `id`         INT AUTO_INCREMENT PRIMARY KEY,
+  `parent_id`  INT NOT NULL,
+  `student_id` INT NOT NULL,
+  UNIQUE KEY `unique_link` (`parent_id`, `student_id`),
+  FOREIGN KEY (`parent_id`)  REFERENCES `parent_accounts`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Students: add education history + personal fields
+ALTER TABLE `students`
+  ADD COLUMN IF NOT EXISTS `last_school`           VARCHAR(255) DEFAULT NULL AFTER `sped_notes`,
+  ADD COLUMN IF NOT EXISTS `school_year_graduated` VARCHAR(20)  DEFAULT NULL AFTER `last_school`,
+  ADD COLUMN IF NOT EXISTS `school_address`        VARCHAR(255) DEFAULT NULL AFTER `school_year_graduated`,
+  ADD COLUMN IF NOT EXISTS `birthday`              DATE         DEFAULT NULL AFTER `school_address`,
+  ADD COLUMN IF NOT EXISTS `sex`                   ENUM('male','female') DEFAULT NULL AFTER `birthday`,
+  ADD COLUMN IF NOT EXISTS `religion`              VARCHAR(100) DEFAULT NULL AFTER `sex`,
+  ADD COLUMN IF NOT EXISTS `province`              VARCHAR(100) DEFAULT NULL AFTER `religion`,
+  ADD COLUMN IF NOT EXISTS `city_municipality`     VARCHAR(100) DEFAULT NULL AFTER `province`,
+  ADD COLUMN IF NOT EXISTS `barangay`              VARCHAR(100) DEFAULT NULL AFTER `city_municipality`;
+
+-- ============================================================
+--  PHASE 4 — FULL FEATURE SET
+-- ============================================================
+
+-- Account lockout support
+ALTER TABLE `users`
+  ADD COLUMN IF NOT EXISTS `failed_attempts` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_active`,
+  ADD COLUMN IF NOT EXISTS `locked_at`       DATETIME DEFAULT NULL AFTER `failed_attempts`;
+
+-- Enrollment workflow: add 'to_follow' and 'registered' statuses
+ALTER TABLE `enrollments`
+  MODIFY COLUMN `status` ENUM('pending','registered','to_follow','enrolled','dropped') DEFAULT 'pending';
+
+-- Enrollment: add payment_plan and mode_of_payment
+ALTER TABLE `enrollments`
+  ADD COLUMN IF NOT EXISTS `payment_plan`    ENUM('annual','semi_annual','quarterly','monthly') DEFAULT 'annual' AFTER `status`,
+  ADD COLUMN IF NOT EXISTS `reservation_paid` TINYINT(1) NOT NULL DEFAULT 0 AFTER `payment_plan`;
+
+-- student_requirements: add 'to_follow' status and uploaded_by
+ALTER TABLE `student_requirements`
+  MODIFY COLUMN `status` ENUM('missing','to_follow','submitted','verified','rejected') DEFAULT 'missing';
+ALTER TABLE `student_requirements`
+  ADD COLUMN IF NOT EXISTS `uploaded_by`   INT DEFAULT NULL AFTER `verified_at`,
+  ADD COLUMN IF NOT EXISTS `uploaded_by_role` VARCHAR(20) DEFAULT NULL AFTER `uploaded_by`,
+  ADD COLUMN IF NOT EXISTS `reject_reason` VARCHAR(255) DEFAULT NULL AFTER `uploaded_by_role`;
+
+-- Enrollment timeline/steps log
+CREATE TABLE IF NOT EXISTS `enrollment_timeline` (
+  `id`          INT AUTO_INCREMENT PRIMARY KEY,
+  `enrollment_id` INT NOT NULL,
+  `step`        VARCHAR(100) NOT NULL,
+  `status`      ENUM('pending','in_progress','completed','rejected') DEFAULT 'pending',
+  `notes`       TEXT DEFAULT NULL,
+  `done_by`     INT DEFAULT NULL,
+  `done_at`     DATETIME DEFAULT NULL,
+  `created_at`  DATETIME DEFAULT current_timestamp(),
+  FOREIGN KEY (`enrollment_id`) REFERENCES `enrollments`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Parent notifications (separate from staff notifications)
+CREATE TABLE IF NOT EXISTS `parent_notifications` (
+  `id`         INT AUTO_INCREMENT PRIMARY KEY,
+  `parent_id`  INT NOT NULL,
+  `student_id` INT DEFAULT NULL,
+  `type`       VARCHAR(50) NOT NULL DEFAULT 'info',
+  `title`      VARCHAR(150) NOT NULL,
+  `body`       TEXT DEFAULT NULL,
+  `is_read`    TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` DATETIME DEFAULT current_timestamp(),
+  FOREIGN KEY (`parent_id`) REFERENCES `parent_accounts`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Discount: add reservation_fee and employee_child_number fields
+ALTER TABLE `discounts`
+  MODIFY COLUMN `type` ENUM('employee','sibling','scholarship','reservation','other') NOT NULL;
+ALTER TABLE `discounts`
+  ADD COLUMN IF NOT EXISTS `child_number` TINYINT DEFAULT 1 AFTER `type`,
+  ADD COLUMN IF NOT EXISTS `fixed_amount` DECIMAL(10,2) DEFAULT NULL AFTER `percentage`;
+
+-- Fees: add reservation_fee flag
+ALTER TABLE `fees`
+  MODIFY COLUMN `fee_type` ENUM('tuition','miscellaneous','pta_fund','development','books','sped','reservation','other') DEFAULT 'tuition';
+
+-- Payments: add gcash/bank_transfer receipt upload
+ALTER TABLE `payments`
+  MODIFY COLUMN `payment_method` ENUM('cash','check','bank_transfer','gcash','maya','other') DEFAULT 'cash';
+
+-- Master list view support: add class_adviser to sections
+ALTER TABLE `sections`
+  ADD COLUMN IF NOT EXISTS `adviser_id` INT DEFAULT NULL AFTER `grade_level_id`,
+  ADD COLUMN IF NOT EXISTS `capacity`   INT DEFAULT 40 AFTER `adviser_id`;

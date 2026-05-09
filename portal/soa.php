@@ -6,6 +6,25 @@ $active_sy = $conn->query("SELECT * FROM school_years WHERE is_active=1 LIMIT 1"
 $sy_id     = $active_sy['id'] ?? 0;
 $student   = $conn->query("SELECT s.*, g.name as grade FROM students s LEFT JOIN grade_levels g ON s.grade_level_id=g.id WHERE s.id=$student_id")->fetch_assoc();
 
+// Guard: no linked student
+if (!$student) {
+  echo '<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/portal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    </head><body>';
+  include('includes/nav.php');
+  echo '<div class="portal-container" style="text-align:center;padding:60px 20px;">
+    <i class="bi bi-exclamation-circle" style="font-size:48px;color:#d97706;"></i>
+    <h3 style="margin-top:16px;">No Student Linked</h3>
+    <p style="color:#6b7280;font-size:14px;">Your account has no enrolled student linked yet.<br>
+    Please wait for the registrar to process your enrollment application.</p>
+    <a href="dashboard.php" style="display:inline-block;margin-top:20px;padding:10px 24px;background:#494C8A;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">
+      Back to Dashboard
+    </a>
+  </div></body></html>';
+  exit();
+}
+
 $success = $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $payment_id = intval($_POST['payment_id']);
@@ -35,6 +54,42 @@ $fees_payments = $conn->query("
 $total_fees = array_sum(array_column($fees_payments, 'amount'));
 $total_paid = array_sum(array_column($fees_payments, 'amount_paid'));
 $total_bal  = array_sum(array_column($fees_payments, 'balance'));
+
+// Auto-apply SPED fee if student is flagged
+if (!empty($student['is_sped'])) {
+  $sped_fee = $conn->query("
+    SELECT f.* FROM fees f
+    WHERE f.fee_type = 'sped' AND f.school_year_id = $sy_id
+    AND f.grade_level_id = {$student['grade_level_id']}
+    LIMIT 1
+  ")->fetch_assoc();
+
+  if ($sped_fee) {
+    // Check if already in payments
+    $already = false;
+    foreach ($fees_payments as $fp) {
+      if ($fp['fee_name'] === $sped_fee['name']) { $already = true; break; }
+    }
+    if (!$already) {
+      $fees_payments[] = [
+        'fee_name' => $sped_fee['name'] . ' (SPED)',
+        'amount'   => $sped_fee['amount'],
+        'amount_paid' => 0,
+        'balance'  => $sped_fee['amount'],
+        'status'   => 'unpaid',
+        'paid_at'  => null,
+        'or_number' => null,
+        'payment_method' => null,
+        'payment_plan' => null,
+        'surcharge' => 0,
+        'proof_file' => null,
+        'payment_id' => null,
+      ];
+      $total_fees += $sped_fee['amount'];
+      $total_bal  += $sped_fee['amount'];
+    }
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
