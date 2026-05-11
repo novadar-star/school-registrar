@@ -71,6 +71,9 @@ function badge($n) {
     <div class="nav-item <?= $active_page==='school_years'?'active':'' ?>" data-href="school_years.php" data-label="School Years">
       <span class="nav-icon"><i class="bi bi-calendar2-range-fill"></i></span><span class="nav-text">School Years</span>
     </div>
+    <div class="nav-item <?= $active_page==='backup'?'active':'' ?>" data-href="backup.php" data-label="Backup">
+      <span class="nav-icon"><i class="bi bi-database-fill-down"></i></span><span class="nav-text">Backup</span>
+    </div>
     <?php endif; ?>
 
   </nav>
