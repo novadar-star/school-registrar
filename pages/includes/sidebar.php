@@ -43,7 +43,7 @@ function badge($n) {
     </div>
     <?php endif; ?>
 
-    <?php if (in_array($role, ['superadmin','registrar'])): ?>
+    <?php if (in_array($role, ['superadmin','finance'])): ?>
     <div class="nav-item <?= $active_page==='payments'?'active':'' ?>" data-href="payments.php" data-label="Payments">
       <span class="nav-icon"><i class="bi bi-cash-coin"></i></span><span class="nav-text">Payments</span>
     </div>

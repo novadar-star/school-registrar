@@ -239,9 +239,9 @@ CREATE TABLE IF NOT EXISTS `payments` (
 --  PHASE 2 — DUAL INTERFACE ADDITIONS
 -- ============================================================
 
--- Expand roles: superadmin and registrar only
+-- Expand roles: superadmin, registrar, finance
 ALTER TABLE `users`
-  MODIFY COLUMN `role` ENUM('superadmin','registrar') NOT NULL DEFAULT 'registrar';
+  MODIFY COLUMN `role` ENUM('superadmin','registrar','finance') NOT NULL DEFAULT 'registrar';
 
 -- Parent/Guardian accounts (separate from staff users)
 CREATE TABLE IF NOT EXISTS `parent_accounts` (

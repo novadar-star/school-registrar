@@ -2,6 +2,7 @@
 session_start();
 include('../mysql/db.php');
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
+if (!in_array($_SESSION['role'] ?? '', ['superadmin','finance'])) { header('Location: dashboard.php'); exit(); }
 
 $active_sy = $conn->query("SELECT * FROM school_years WHERE is_active=1 LIMIT 1")->fetch_assoc();
 $sy_id     = $active_sy['id'] ?? 0;

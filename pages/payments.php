@@ -2,7 +2,7 @@
 session_start();
 include('../mysql/db.php');
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
-if (!in_array($_SESSION['role'] ?? '', ['registrar','superadmin'])) {
+if (!in_array($_SESSION['role'] ?? '', ['finance','superadmin'])) {
   header('Location: dashboard.php'); exit();
 }
 
