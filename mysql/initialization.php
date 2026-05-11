@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email`     varchar(255) NOT NULL,
   `name`      varchar(255) NOT NULL,
   `password`  varchar(255) NOT NULL,
-  `role`      enum('superadmin','registrar') NOT NULL DEFAULT 'registrar',
+  `role`      enum('superadmin','registrar','finance') NOT NULL DEFAULT 'registrar',
   `is_active` tinyint(1)   NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)

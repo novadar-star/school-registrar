@@ -1,8 +1,9 @@
 <?php
 session_start();
 include('../mysql/db.php');
+require_once '../mysql/helpers.php';
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
-if ($_SESSION['role'] !== 'superadmin') { header('Location: dashboard.php'); exit(); }
+requireRole(['superadmin']);
 
 // Add new SY
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add') {

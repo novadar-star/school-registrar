@@ -245,9 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
       $c_grade   = intval($child['grade_level_id'] ?? 0);
       $c_type    = in_array($child['student_type'] ?? '', ['new','old']) ? $child['student_type'] : 'new';
       $c_sex     = trim($child['sex']          ?? '');
-      $c_bday_m  = trim($child['bday_m']       ?? '');
-      $c_bday_d  = trim($child['bday_d']       ?? '');
-      $c_bday_y  = trim($child['bday_y']       ?? '');
+      $c_birthday_raw = trim($child['birthday'] ?? '');
       $c_religion= trim($child['religion']     ?? '');
       $c_last_school = trim($child['last_school'] ?? '');
       $c_sy_grad = trim($child['school_year_graduated'] ?? '');
@@ -255,9 +253,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
 
       if (empty($c_first) || empty($c_last) || !$c_grade) continue;
 
-      $c_birthday = (!empty($c_bday_y) && !empty($c_bday_m) && !empty($c_bday_d))
-                    ? "$c_bday_y-" . str_pad($c_bday_m,2,'0',STR_PAD_LEFT) . "-" . str_pad($c_bday_d,2,'0',STR_PAD_LEFT)
-                    : null;
+      // Accept either a single date field (YYYY-MM-DD) or legacy split fields
+      if (!empty($c_birthday_raw) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $c_birthday_raw)) {
+        $c_birthday = $c_birthday_raw;
+      } else {
+        $c_bday_m = trim($child['bday_m'] ?? '');
+        $c_bday_d = trim($child['bday_d'] ?? '');
+        $c_bday_y = trim($child['bday_y'] ?? '');
+        $c_birthday = (!empty($c_bday_y) && !empty($c_bday_m) && !empty($c_bday_d))
+                      ? "$c_bday_y-" . str_pad($c_bday_m,2,'0',STR_PAD_LEFT) . "-" . str_pad($c_bday_d,2,'0',STR_PAD_LEFT)
+                      : null;
+      }
 
       // Temp LRN: "P-" + 6-char hex = 8 chars, well within varchar(20), collision-proof
       $temp_lrn = 'P-' . strtoupper(substr(md5(uniqid('', true)), 0, 10));
@@ -334,17 +340,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
 
     if (!empty($enroll_results)) {
       $enroll_success = true;
-      // Send enrollment received email notification
-      require_once './mysql/email_notifications.php';
-      $guardian_email = trim($p_email ?? '');
-      $guardian_name  = trim(($p_first ?? '') . ' ' . ($p_last ?? ''));
-      // Only pass plain password for new accounts so email can show login credentials
-      $plain_pass_for_email = empty($existing_parent) ? $p_password : null;
-      if ($guardian_email) {
-        foreach ($enroll_results as $er) {
-          notifyEnrollmentReceived($guardian_email, $guardian_name, $er['child_name'], $er['ref'], $plain_pass_for_email);
-        }
-      }
     } else {
       $enroll_error = "No valid children were submitted. Please check the form.";
     }

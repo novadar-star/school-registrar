@@ -1,9 +1,8 @@
 <?php
 session_start();
 include('../mysql/db.php');
+require_once '../mysql/helpers.php';
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
-
-// Handle status update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_status') {
   $enroll_id = intval($_POST['enroll_id']);
   $status    = $_POST['status'];
@@ -41,29 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       $parent = $conn->query("SELECT pa.id FROM parent_accounts pa JOIN parent_student_links psl ON psl.parent_id=pa.id WHERE psl.student_id=$sid LIMIT 1")->fetch_assoc();
       // (parent notifications handled via portal — no users table link needed)
 
-      // Send approval email if parent account exists
-      require_once '../mysql/email_notifications.php';
-      $enroll_data = $conn->query("SELECT student_id FROM enrollments WHERE id=$enroll_id")->fetch_assoc();
-      if ($enroll_data) {
-        $sid_email = $enroll_data['student_id'];
-        $parent_email_row = $conn->query("
-          SELECT pa.email, pa.name, s.first_name, s.last_name, g.name as grade
-          FROM parent_accounts pa
-          JOIN parent_student_links psl ON psl.parent_id = pa.id
-          JOIN students s ON s.id = psl.student_id
-          LEFT JOIN grade_levels g ON g.id = s.grade_level_id
-          WHERE psl.student_id = $sid_email
-          LIMIT 1
-        ")->fetch_assoc();
-        if ($parent_email_row) {
-          notifyEnrollmentApproved(
-            $parent_email_row['email'],
-            $parent_email_row['name'],
-            $parent_email_row['first_name'] . ' ' . $parent_email_row['last_name'],
-            $parent_email_row['grade']
-          );
-        }
-      }
+      // Email notifications not active in current deployment (no SMTP configured)
     }
 
     if ($status === 'dropped' && $enroll) {

@@ -1,10 +1,8 @@
 <?php
 session_start();
 include('../mysql/db.php');
+require_once '../mysql/helpers.php';
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
-if (!in_array($_SESSION['role'] ?? '', ['finance','superadmin'])) {
-  header('Location: dashboard.php'); exit();
-}
 
 // Handle payment reset
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reset_payment') {
@@ -73,7 +71,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
   // Send email notification
   if ($or_number) {
-    require_once '../mysql/email_notifications.php';
     $parent_pay = $conn->query("
       SELECT pa.email, pa.name, s.first_name, s.last_name
       FROM parent_accounts pa
@@ -81,10 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       JOIN students s ON s.id = psl.student_id
       WHERE psl.student_id = $sid LIMIT 1
     ")->fetch_assoc();
-    if ($parent_pay) {
-      notifyPaymentReceived($parent_pay['email'], $parent_pay['name'],
-        $parent_pay['first_name'].' '.$parent_pay['last_name'], $amount_paid, $or_number);
-    }
+    // Email notifications not active in current deployment (no SMTP configured)
   }
 
   header("Location: payments.php?success=Payment recorded successfully"); exit();

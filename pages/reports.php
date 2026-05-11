@@ -1,7 +1,9 @@
 <?php
 session_start();
 include('../mysql/db.php');
+require_once '../mysql/helpers.php';
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
+// Reports visible to all roles but not unauthenticated users
 
 $active_sy = $conn->query("SELECT * FROM school_years WHERE is_active=1 LIMIT 1")->fetch_assoc();
 $sy_id     = $active_sy['id'] ?? 0;

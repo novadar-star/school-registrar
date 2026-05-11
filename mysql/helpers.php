@@ -4,6 +4,22 @@
  */
 
 /**
+ * Enforce role-based access. Call at the top of any admin page.
+ * Redirects to dashboard if the logged-in user's role is not in $allowed.
+ * Pass an empty array to allow any authenticated user.
+ *
+ * @param array $allowed  e.g. ['superadmin','registrar']
+ */
+function requireRole(array $allowed): void {
+  if (empty($allowed)) return; // any authenticated user is fine
+  $role = $_SESSION['role'] ?? '';
+  if (!in_array($role, $allowed, true)) {
+    header('Location: dashboard.php');
+    exit();
+  }
+}
+
+/**
  * Get deduplicated fees for a grade level + school year.
  */
 function get_fees($conn, int $grade_level_id, int $sy_id): array {

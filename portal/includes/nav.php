@@ -18,7 +18,7 @@ if (isset($parent_id)) {
     <a href="soa.php" class="<?= $active_portal==='soa'?'active':'' ?>"><i class="bi bi-receipt"></i> Statement of Account</a>
     <a href="notifications.php" class="<?= $active_portal==='notifications'?'active':'' ?>" style="position:relative;">
       <i class="bi bi-bell-fill"></i> Notifications
-      <?php if ($notif_count > 0): ?><span style="position:absolute;top:-4px;right:-8px;background:#dc2626;color:#fff;border-radius:999px;font-size:9px;padding:1px 5px;font-weight:700;"><?= $notif_count ?></span><?php endif; ?>
+      <span class="notif-live-badge" style="position:absolute;top:-4px;right:-8px;background:#dc2626;color:#fff;border-radius:999px;font-size:9px;padding:1px 5px;font-weight:700;<?= $notif_count > 0 ? '' : 'display:none;' ?>"><?= $notif_count ?></span>
     </a>
   </div>
   <div class="portal-nav-user">
@@ -27,3 +27,29 @@ if (isset($parent_id)) {
     <a href="logout.php" class="portal-logout"><i class="bi bi-box-arrow-right"></i></a>
   </div>
 </nav>
+
+<script>
+// ── Live notification badge polling (every 30s) ────────────
+(function () {
+  function updateBadge(count) {
+    document.querySelectorAll('.notif-live-badge').forEach(function (el) {
+      if (count > 0) {
+        el.textContent = count;
+        el.style.display = 'inline';
+      } else {
+        el.style.display = 'none';
+      }
+    });
+  }
+
+  function poll() {
+    fetch('notif_count.php')
+      .then(function (r) { return r.json(); })
+      .then(function (data) { updateBadge(data.count || 0); })
+      .catch(function () {});
+  }
+
+  poll();
+  setInterval(poll, 30000);
+})();
+</script>

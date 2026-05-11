@@ -1,5 +1,6 @@
 <?php
 include('../mysql/db.php');
+require_once '../mysql/helpers.php';
 if (session_id() == "") session_start();
 
 if (!isset($_SESSION['name'])) {
@@ -12,26 +13,20 @@ $sy_id     = $active_sy['id'] ?? 0;
 
 // ── Enrollment stats ───────────────────────────────────────
 $total_students = $conn->query("SELECT COUNT(*) as c FROM students WHERE is_archived=0")->fetch_assoc()['c'];
-
-$enrollments_exist = $conn->query("SHOW TABLES LIKE 'enrollments'")->num_rows > 0;
 $total_enrolled = $total_pending = $total_dropped = 0;
-if ($enrollments_exist && $sy_id) {
+if ($sy_id) {
   $total_enrolled = $conn->query("SELECT COUNT(*) as c FROM enrollments WHERE school_year_id=$sy_id AND status='enrolled'")->fetch_assoc()['c'];
   $total_pending  = $conn->query("SELECT COUNT(*) as c FROM enrollments WHERE school_year_id=$sy_id AND status='pending'")->fetch_assoc()['c'];
   $total_dropped  = $conn->query("SELECT COUNT(*) as c FROM enrollments WHERE school_year_id=$sy_id AND status='dropped'")->fetch_assoc()['c'];
 }
 
 // ── Payment stats ──────────────────────────────────────────
-$payments_exist = $conn->query("SHOW TABLES LIKE 'payments'")->num_rows > 0;
-$total_paid = $total_unpaid = $total_collection = $total_partial = 0;
-if ($payments_exist) {
-  $total_paid       = $conn->query("SELECT COUNT(DISTINCT student_id) as c FROM payments WHERE status='paid'")->fetch_assoc()['c'];
-  $total_partial    = $conn->query("SELECT COUNT(DISTINCT student_id) as c FROM payments WHERE status='partial'")->fetch_assoc()['c'];
-  $total_unpaid     = $conn->query("SELECT COUNT(DISTINCT student_id) as c FROM payments WHERE status='unpaid'")->fetch_assoc()['c'];
-  $total_collection = $conn->query("SELECT COALESCE(SUM(amount_paid),0) as c FROM payments")->fetch_assoc()['c'];
-}
+$total_paid       = $conn->query("SELECT COUNT(DISTINCT student_id) as c FROM payments WHERE status='paid'")->fetch_assoc()['c'];
+$total_partial    = $conn->query("SELECT COUNT(DISTINCT student_id) as c FROM payments WHERE status='partial'")->fetch_assoc()['c'];
+$total_unpaid     = $conn->query("SELECT COUNT(DISTINCT student_id) as c FROM payments WHERE status='unpaid'")->fetch_assoc()['c'];
+$total_collection = $conn->query("SELECT COALESCE(SUM(amount_paid),0) as c FROM payments")->fetch_assoc()['c'];
 
-// ── Students per grade (Grade 7–10 only for JHS focus) ────
+// ── Students per grade ─────────────────────────────────────
 $grade_labels = [];
 $grade_counts = [];
 $grade_res = $conn->query("
@@ -45,7 +40,7 @@ while ($g = $grade_res->fetch_assoc()) {
   $grade_counts[] = (int)$g['total'];
 }
 
-// ── Recent enrollments ─────────────────────────────────────
+// ── Recent registrations ───────────────────────────────────
 $recent = $conn->query("
   SELECT s.first_name, s.last_name, s.photo, g.name as grade, s.student_type, s.id
   FROM students s

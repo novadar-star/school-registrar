@@ -3,7 +3,6 @@ session_start();
 include('../mysql/db.php');
 require_once '../mysql/helpers.php';
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
-if (!in_array($_SESSION['role'] ?? '', ['superadmin','registrar','finance'])) { header('Location: dashboard.php'); exit(); }
 
 $active_sy = $conn->query("SELECT * FROM school_years WHERE is_active=1 LIMIT 1")->fetch_assoc();
 $sy_id     = $active_sy['id'] ?? 0;
@@ -24,22 +23,7 @@ if (isset($_GET['verify'])) {
     $req_name = $conn->query("SELECT r.name FROM student_requirements sr JOIN requirements r ON r.id=sr.requirement_id WHERE sr.id=$rid")->fetch_assoc()['name'] ?? 'Document';
     notify_parent($conn, $parent['id'], $sid, 'success', 'Document Verified', "$req_name has been verified by the registrar.");
   }
-  // Send email notification
-  require_once '../mysql/email_notifications.php';
-  $req_data = $conn->query("SELECT sr.student_id, r.name as req_name FROM student_requirements sr JOIN requirements r ON r.id=sr.requirement_id WHERE sr.id=$rid")->fetch_assoc();
-  if ($req_data) {
-    $parent_email_row = $conn->query("
-      SELECT pa.email, pa.name, s.first_name, s.last_name
-      FROM parent_accounts pa
-      JOIN parent_student_links psl ON psl.parent_id = pa.id
-      JOIN students s ON s.id = psl.student_id
-      WHERE psl.student_id = {$req_data['student_id']}
-      LIMIT 1
-    ")->fetch_assoc();
-    if ($parent_email_row) {
-      notifyDocumentVerified($parent_email_row['email'], $parent_email_row['name'], $parent_email_row['first_name'].' '.$parent_email_row['last_name'], $req_data['req_name']);
-    }
-  }
+  // Email notifications not active in current deployment (no SMTP configured)
   audit_log($conn, $uid, $uname, 'verify_document', 'student_requirement', $rid);
   header("Location: requirements.php?student_id=$sid&success=Document verified"); exit();
 }
@@ -111,22 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rejec
     $msg = "Your submitted {$sr_row['doc_name']} was rejected." . ($reason ? " Reason: $reason" : '');
     notify_parent($conn, $sr_row['parent_id'], $sr_row['student_id'], 'danger', 'Document Rejected', $msg);
   }
-  // Send email notification
-  require_once '../mysql/email_notifications.php';
-  $req_data_rej = $conn->query("SELECT sr.student_id, r.name as req_name FROM student_requirements sr JOIN requirements r ON r.id=sr.requirement_id WHERE sr.id=$sr_id")->fetch_assoc();
-  if ($req_data_rej) {
-    $parent_email_row = $conn->query("
-      SELECT pa.email, pa.name, s.first_name, s.last_name
-      FROM parent_accounts pa
-      JOIN parent_student_links psl ON psl.parent_id = pa.id
-      JOIN students s ON s.id = psl.student_id
-      WHERE psl.student_id = {$req_data_rej['student_id']}
-      LIMIT 1
-    ")->fetch_assoc();
-    if ($parent_email_row) {
-      notifyDocumentRejected($parent_email_row['email'], $parent_email_row['name'], $parent_email_row['first_name'].' '.$parent_email_row['last_name'], $req_data_rej['req_name']);
-    }
-  }
+  // Email notifications not active in current deployment (no SMTP configured)
   audit_log($conn, $uid, $uname, 'reject_document', 'student_requirement', $sr_id, $reason);
   header("Location: requirements.php?student_id=$sid&success=Document rejected"); exit();
 }

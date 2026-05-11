@@ -1,9 +1,8 @@
 <?php
 session_start();
 include('../mysql/db.php');
+require_once '../mysql/helpers.php';
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
-// Finance and registrar/superadmin can manage fees
-if (!in_array($_SESSION['role'] ?? '', ['superadmin','finance'])) { header('Location: dashboard.php'); exit(); }
 
 // Handle add/edit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

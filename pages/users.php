@@ -1,14 +1,13 @@
 <?php
 session_start();
 include('../mysql/db.php');
+require_once '../mysql/helpers.php';
 
 // Superadmin only
 if (!isset($_SESSION['name'])) {
   header('Location: ../index.php'); exit();
 }
-if ($_SESSION['role'] !== 'superadmin') {
-  header('Location: dashboard.php'); exit();
-}
+requireRole(['superadmin']);
 
 $error_message   = '';
 $success_message = '';

@@ -28,7 +28,19 @@ $success = $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_proof'])) {
   $pay_method = trim($_POST['pay_method'] ?? 'cash');
 
-  if (empty($_FILES['proof']['tmp_name'])) {
+  // Server-side lock: check if a pending/confirmed proof already exists
+  $existing_proof_check = $conn->query("
+    SELECT proof_file, status FROM payments
+    WHERE student_id=$student_id AND proof_file IS NOT NULL AND proof_file != ''
+    ORDER BY id DESC LIMIT 1
+  ")->fetch_assoc();
+
+  $locked = $existing_proof_check &&
+            !in_array($existing_proof_check['status'], ['rejected', null]);
+
+  if ($locked) {
+    $error = "A receipt is already pending verification. You cannot upload another until it is reviewed.";
+  } elseif (empty($_FILES['proof']['tmp_name'])) {
     $error = "Please select a file to upload.";
   } else {
     $allowed = ['image/jpeg','image/png','image/webp','application/pdf'];
@@ -81,6 +93,14 @@ $total_paid     = $soa['total_paid'];
 $total_bal      = $soa['total_bal'];
 $existing_proof  = $soa['pay_details']['proof_file'] ?? null;
 $existing_method = $soa['pay_details']['payment_method'] ?? null;
+// Determine if upload is locked: locked when proof exists and payment is pending/confirmed (not rejected)
+$proof_status = null;
+if ($existing_proof) {
+  $ps = $conn->query("SELECT status FROM payments WHERE student_id=$student_id AND proof_file IS NOT NULL AND proof_file != '' ORDER BY id DESC LIMIT 1");
+  if ($ps) $proof_status = $ps->fetch_assoc()['status'] ?? null;
+}
+// Allow re-upload only if no proof yet, or if status is 'rejected'
+$can_upload = !$existing_proof || $proof_status === 'rejected';
 
 // Discounts
 $discounts = $conn->query("
@@ -223,9 +243,14 @@ $discounts = $conn->query("
         <i class="bi bi-eye-fill"></i> View Receipt
       </a>
     </div>
-    <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">Want to replace it? Upload a new file below.</div>
+    <?php if ($can_upload): ?>
+    <div style="font-size:12px;color:#b91c1c;font-weight:600;margin-bottom:12px;"><i class="bi bi-exclamation-triangle-fill"></i> Your receipt was rejected. Please upload a new one.</div>
+    <?php else: ?>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:12px;"><i class="bi bi-clock"></i> Your receipt is pending verification by the finance staff. You cannot re-upload until it is reviewed.</div>
+    <?php endif; ?>
     <?php endif; ?>
 
+    <?php if ($can_upload): ?>
     <form method="POST" action="soa.php" enctype="multipart/form-data">
       <input type="hidden" name="submit_proof" value="1">
 
@@ -257,6 +282,7 @@ $discounts = $conn->query("
         <i class="bi bi-upload"></i> Submit Proof of Payment
       </button>
     </form>
+    <?php endif; ?>
   </div>
 
   <div class="portal-req-note">
