@@ -1,0 +1,15 @@
+/* fees.css */
+@import url('enrollment.css');
+
+.fees-table-card { background:var(--color-surface); border-radius:var(--radius); box-shadow:var(--shadow-sm); border:1px solid var(--color-border); overflow:hidden; }
+.fees-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+.fees-table thead tr { background:var(--color-primary); }
+.fees-table thead th { padding:12px 16px; text-align:left; font-size:11px; font-weight:700; color:#fff; letter-spacing:.05em; text-transform:uppercase; }
+.fees-table tbody tr { border-bottom:1px solid var(--color-border); transition:background .15s; }
+.fees-table tbody tr:last-child { border-bottom:none; }
+.fees-table tbody tr:hover { background:#f9fafb; }
+.fees-table tbody td { padding:12px 16px; vertical-align:middle; color:var(--color-text); }
+.actions-cell { display:flex; gap:6px; align-items:center; }
+.btn-u-edit { padding:5px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:600; text-decoration:none; background:#e8eaf6; color:var(--color-primary); transition:opacity .2s; }
+.btn-u-deactivate { padding:5px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:600; text-decoration:none; background:#fdeaea; color:var(--color-danger); transition:opacity .2s; }
+.btn-u-edit:hover, .btn-u-deactivate:hover { opacity:.75; }

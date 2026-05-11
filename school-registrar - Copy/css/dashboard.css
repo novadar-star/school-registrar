@@ -1,0 +1,101 @@
+/* dashboard.css */
+
+.topbar-user-chip {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--color-muted);
+}
+
+/* ── Stat cards ── */
+.stat-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 14px; margin-bottom: 24px;
+}
+@media (max-width: 1024px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px)  { .stat-grid { grid-template-columns: 1fr; } }
+
+.stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex; align-items: center; gap: 14px;
+  text-decoration: none; color: var(--color-text);
+  transition: box-shadow var(--transition);
+}
+.stat-card:hover { box-shadow: var(--shadow); }
+
+.stat-icon-wrap {
+  width: 40px; height: 40px; border-radius: var(--radius);
+  background: var(--color-primary-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--color-primary); flex-shrink: 0;
+}
+
+.stat-body { flex: 1; min-width: 0; }
+.stat-value { font-size: 24px; font-weight: 700; line-height: 1; }
+.stat-label { font-size: 12px; color: var(--color-muted); margin-top: 3px; }
+.stat-arrow { font-size: 16px; color: var(--color-border); text-decoration: none; }
+.stat-arrow:hover { color: var(--color-primary); }
+
+/* ── Dash rows ── */
+.dash-row {
+  display: grid; grid-template-columns: 1.5fr 1fr;
+  gap: 16px; margin-bottom: 16px;
+}
+@media (max-width: 900px) { .dash-row { grid-template-columns: 1fr; } }
+
+/* ── Panel ── */
+.dash-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--color-border);
+}
+.panel-title {
+  font-size: 12px; font-weight: 700; color: var(--color-muted);
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.panel-link { font-size: 12px; font-weight: 600; color: var(--color-primary); text-decoration: none; }
+.panel-link:hover { text-decoration: underline; }
+
+.panel-body { padding: 16px; flex: 1; }
+.panel-body-flush { padding: 0; }
+
+.chart-wrap { position: relative; height: 220px; width: 100%; }
+
+/* ── Dash table ── */
+.dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dash-table thead th {
+  padding: 9px 14px; text-align: left;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+.dash-table tbody tr { border-bottom: 1px solid var(--color-border); }
+.dash-table tbody tr:last-child { border-bottom: none; }
+.dash-table tbody tr:hover { background: var(--color-bg); }
+.dash-table tbody td { padding: 10px 14px; vertical-align: middle; font-size: 13px; }
+.td-muted { color: var(--color-muted) !important; font-size: 12px; }
+
+/* ── Payment summary ── */
+.att-summary {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--color-border);
+}
+.att-sum-item {
+  padding: 16px 10px; text-align: center;
+  border-right: 1px solid var(--color-border);
+}
+.att-sum-item:last-child { border-right: none; }
+.att-sum-val { display: block; font-size: 26px; font-weight: 700; line-height: 1; color: var(--color-text); }
+.att-sum-lbl { display: block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--color-muted); margin-top: 4px; }
+.att-present .att-sum-val { color: var(--color-success); }
+.att-absent  .att-sum-val { color: var(--color-danger); }
+.att-late    .att-sum-val { color: var(--color-warning); }
+
+.empty-msg { padding: 40px; text-align: center; font-size: 13px; color: var(--color-muted); }
