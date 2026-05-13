@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       $stmt2 = $conn->prepare("INSERT INTO student_requirements (student_id, requirement_id, school_year_id, file_path, status, submitted_at, verified_by, verified_at)
         VALUES (?,?,?,?,'verified',NOW(),?,NOW())
         ON DUPLICATE KEY UPDATE file_path=VALUES(file_path), status='verified', submitted_at=NOW(), verified_by=VALUES(verified_by), verified_at=NOW()");
-      $stmt2->bind_param("iiisii", $id, $req_id, $sy_id, $filename, $uid, $uid);
+      $stmt2->bind_param("iiisi", $id, $req_id, $sy_id, $filename, $uid);
       $stmt2->execute();
       // Audit log
       $uname = $_SESSION['name'];

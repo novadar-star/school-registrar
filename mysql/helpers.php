@@ -251,7 +251,8 @@ function repair_payment_schedule_dates($conn, int $enrollment_id, string $scheme
     // Check if stored date is bad (year < 2000 or null/zero)
     $stored_year = (int) substr($row['due_date'] ?? '', 0, 4);
     if ($stored_year < 2000) {
-      $conn->query("UPDATE payment_schedules SET due_date='$correct' WHERE id={$row['id']}");
+      // Reset date, clear any wrongly-applied penalty, restore status to unpaid
+      $conn->query("UPDATE payment_schedules SET due_date='$correct', penalty=0, status='unpaid' WHERE id={$row['id']}");
     }
   }
 
@@ -261,7 +262,8 @@ function repair_payment_schedule_dates($conn, int $enrollment_id, string $scheme
     $dp_year = (int) substr($dp['due_date'] ?? '', 0, 4);
     if ($dp_year < 2000) {
       $june30 = last_day_of(6, (int) date('Y'));
-      $conn->query("UPDATE payment_schedules SET due_date='$june30' WHERE id={$dp['id']}");
+      // Reset date, clear wrongly-applied penalty, restore status to unpaid
+      $conn->query("UPDATE payment_schedules SET due_date='$june30', penalty=0, status='unpaid' WHERE id={$dp['id']}");
     }
   }
 }
