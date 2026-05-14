@@ -64,12 +64,25 @@ $schedule = $conn->query("
   ORDER BY installment_no ASC
 ")->fetch_all(MYSQLI_ASSOC);
 
-$schemes_info = [
-  'annual'      => ['label'=>'Annual',      'downpayment'=>95890,  'desc'=>'Pay everything upfront. No further payments required.'],
-  'semi_annual' => ['label'=>'Semi-Annual', 'downpayment'=>55855,  'desc'=>'Downpayment now, one more payment in November.'],
-  'quarterly'   => ['label'=>'Quarterly',   'downpayment'=>35010,  'desc'=>'Downpayment now, then 3 payments: August, November, February.'],
-  'monthly'     => ['label'=>'Monthly',     'downpayment'=>23430,  'desc'=>'Downpayment now, then monthly payments July through February.'],
-];
+// Build dynamic scheme options from actual fees + discounts for this student
+$scheme_keys = ['annual','semi_annual','quarterly','monthly'];
+$schemes_info = [];
+foreach ($scheme_keys as $key) {
+  $cfg = get_payment_scheme_config_for_student($conn, $student_id, $student['grade_level_id'], $sy_id, $key);
+  $descs = [
+    'annual'      => 'Pay everything upfront. No further payments required.',
+    'semi_annual' => 'Downpayment now, one more payment in November.',
+    'quarterly'   => 'Downpayment now, then 3 payments: August, November, February.',
+    'monthly'     => 'Downpayment now, then monthly payments July through February.',
+  ];
+  $schemes_info[$key] = [
+    'label'       => $cfg['label'],
+    'downpayment' => $cfg['downpayment'],
+    'net_total'   => $cfg['net_total'],
+    'desc'        => $descs[$key],
+    'installments'=> $cfg['installments'],
+  ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -121,8 +134,19 @@ $schemes_info = [
           <div style="flex:1;">
             <div style="font-size:14px;font-weight:700;color:#1a1a2e;"><?= $info['label'] ?></div>
             <div style="font-size:13px;color:#6b7280;margin-top:2px;"><?= $info['desc'] ?></div>
+            <?php if (!empty($info['installments'])): ?>
+            <div style="margin-top:8px;font-size:12px;color:#374151;">
+              <?php foreach ($info['installments'] as $inst): ?>
+              <span style="display:inline-block;background:#f3f4f6;border-radius:4px;padding:2px 8px;margin:2px 4px 2px 0;">
+                <?= htmlspecialchars($inst['label']) ?>: <strong>₱<?= number_format($inst['amount'], 2) ?></strong>
+              </span>
+              <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
           </div>
           <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total</div>
+            <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:4px;">₱<?= number_format($info['net_total'], 2) ?></div>
             <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Downpayment</div>
             <div style="font-size:18px;font-weight:800;color:#494C8A;">₱<?= number_format($info['downpayment'], 2) ?></div>
           </div>

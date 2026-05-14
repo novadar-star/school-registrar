@@ -464,6 +464,11 @@ ALTER TABLE `users`
   ADD COLUMN IF NOT EXISTS `failed_attempts` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_active`,
   ADD COLUMN IF NOT EXISTS `locked_at`       DATETIME DEFAULT NULL AFTER `failed_attempts`;
 
+-- Account lockout support for parent portal
+ALTER TABLE `parent_accounts`
+  ADD COLUMN IF NOT EXISTS `failed_attempts` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_active`,
+  ADD COLUMN IF NOT EXISTS `locked_at`       DATETIME DEFAULT NULL AFTER `failed_attempts`;
+
 -- Enrollment workflow: add 'to_follow' and 'registered' statuses
 ALTER TABLE `enrollments`
   MODIFY COLUMN `status` ENUM('pending','registered','to_follow','enrolled','dropped') DEFAULT 'pending';

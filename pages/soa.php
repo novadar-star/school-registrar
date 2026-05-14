@@ -29,8 +29,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   $amount     = floatval($_POST['amount_paid']);
   $or_number  = trim($_POST['or_number'] ?? '');
   $method     = in_array($_POST['payment_method'] ?? '', ['cash','gcash','bank_transfer','maya','other']) ? $_POST['payment_method'] : 'cash';
-  $paid_at    = $_POST['paid_at'] ?? date('Y-m-d');
+  $paid_at_raw = $_POST['paid_at'] ?? date('Y-m-d');
+  $paid_at    = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $paid_at_raw) && strtotime($paid_at_raw) !== false)
+                ? $paid_at_raw : date('Y-m-d');
 
+  if ($amount <= 0) {
+    header("Location: soa.php?student_id=$student_id&error=Amount must be greater than zero"); exit();
+  }
+
+  // Ownership check: schedule row must belong to this student
   $sched = $conn->query("SELECT * FROM payment_schedules WHERE id=$sched_id AND student_id=$student_id")->fetch_assoc();
   if ($sched) {
     $total_due = $sched['amount_due'] + $sched['penalty'];

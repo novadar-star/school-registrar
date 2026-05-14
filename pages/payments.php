@@ -4,10 +4,13 @@ include('../mysql/db.php');
 require_once '../mysql/helpers.php';
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
 
-// Handle payment reset
+// Handle payment reset — superadmin/registrar only
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reset_payment') {
+  if (!in_array($_SESSION['role'] ?? '', ['superadmin','registrar'])) {
+    header('Location: payments.php?error=Unauthorized'); exit();
+  }
   $sid = intval($_POST['student_id']);
-  // Reset all payment records for this student back to unpaid
+  if ($sid <= 0) { header('Location: payments.php?error=Invalid student'); exit(); }
   $conn->query("
     UPDATE payments p
     JOIN fees f ON f.id = p.fee_id
@@ -28,8 +31,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   $or_number   = trim($_POST['or_number'] ?? '');
   $pay_method  = in_array($_POST['payment_method'] ?? '', ['cash','bank_transfer','gcash','maya','other'])
                  ? $_POST['payment_method'] : 'cash';
-  $paid_at     = $_POST['paid_at'] ?? date('Y-m-d');
+  $paid_at_raw = $_POST['paid_at'] ?? date('Y-m-d');
+  // Validate date format and range
+  $paid_at = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $paid_at_raw) && strtotime($paid_at_raw) !== false)
+             ? $paid_at_raw : date('Y-m-d');
   $sy_id_pay   = intval($_POST['school_year_id']);
+
+  if ($sid <= 0 || $amount_paid <= 0) {
+    header("Location: payments.php?error=" . urlencode("Invalid payment amount.")); exit();
+  }
 
   // Get all fees for this student's grade
   $student_grade = $conn->query("SELECT grade_level_id FROM students WHERE id=$sid")->fetch_assoc()['grade_level_id'] ?? 0;
@@ -86,14 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 $active_sy  = $conn->query("SELECT * FROM school_years WHERE is_active=1 LIMIT 1")->fetch_assoc();
 $sy_id      = $active_sy['id'] ?? 0;
-$search     = $_GET['search'] ?? '';
-$searchParam = "%$search%";
+$search     = trim($_GET['search'] ?? '');
 
-$where = "s.is_archived = 0";
-if ($search) $where .= " AND (s.first_name LIKE '$searchParam' OR s.last_name LIKE '$searchParam' OR s.lrn LIKE '$searchParam')";
-
-// Students with payment summary
-$students_raw = $conn->query("
+// Parameterized search
+$pay_base_sql = "
   SELECT s.id, s.first_name, s.last_name, s.lrn, g.name as grade, s.grade_level_id,
     COALESCE(SUM(p.amount_paid),0) as total_paid,
     (SELECT p2.proof_file FROM payments p2
@@ -105,10 +111,22 @@ $students_raw = $conn->query("
   FROM students s
   LEFT JOIN grade_levels g ON s.grade_level_id = g.id
   LEFT JOIN payments p ON p.student_id = s.id
-  WHERE $where
-  GROUP BY s.id
-  ORDER BY s.last_name ASC
-")->fetch_all(MYSQLI_ASSOC);
+  WHERE s.is_archived = 0";
+
+$pay_bind_types = "";
+$pay_bind_vals  = [];
+if ($search !== '') {
+  $sp = "%$search%";
+  $pay_base_sql   .= " AND (s.first_name LIKE ? OR s.last_name LIKE ? OR s.lrn LIKE ?)";
+  $pay_bind_types .= "sss";
+  $pay_bind_vals[] = $sp; $pay_bind_vals[] = $sp; $pay_bind_vals[] = $sp;
+}
+$pay_base_sql .= " GROUP BY s.id ORDER BY s.last_name ASC";
+
+$pay_stmt = $conn->prepare($pay_base_sql);
+if ($pay_bind_types) $pay_stmt->bind_param($pay_bind_types, ...$pay_bind_vals);
+$pay_stmt->execute();
+$students_raw = $pay_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 // For each student, compute deduplicated total fees
 $students_payments = [];
@@ -193,7 +211,7 @@ $active_page = 'payments';
             <td>₱<?= number_format($p['total_fees'], 2) ?></td>
             <td style="color:var(--color-success);font-weight:600;">₱<?= number_format($p['total_paid'], 2) ?></td>
             <td style="color:var(--color-danger);font-weight:600;">₱<?= number_format($p['total_balance'], 2) ?></td>
-            <td><span class="pay-badge pay-<?= $p['pay_status'] ?>"><?= ucfirst($p['pay_status']) ?></span></td>
+            <td><span class="pay-badge pay-<?= htmlspecialchars($p['pay_status']) ?>"><?= htmlspecialchars(ucfirst($p['pay_status'])) ?></span></td>
             <td>
               <?php if (!empty($p['proof_file'])): ?>
                 <a href="uploads/<?= htmlspecialchars($p['proof_file']) ?>" target="_blank"

@@ -10,7 +10,9 @@ $conn = new mysqli(
 );
 
 if($conn->connect_error) {
-  die("Connection failed: " . $conn->connect_error);
+  error_log("DB connection failed: " . $conn->connect_error);
+  http_response_code(503);
+  die("Service temporarily unavailable. Please try again later.");
 }
 
 // Ensure consistent charset

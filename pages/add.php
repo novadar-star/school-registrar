@@ -63,15 +63,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $sy = $conn->query("SELECT id FROM school_years WHERE is_active = 1 LIMIT 1")->fetch_assoc();
   $school_year_id = $sy ? $sy['id'] : null;
 
-  // Photo upload
+  // Photo upload — server-side MIME check, 5MB limit, safe extension
   $photo = '';
   if (!empty($_FILES['photo']['tmp_name'])) {
-    $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!in_array($_FILES['photo']['type'], $allowed)) {
+    $max_photo = 5 * 1024 * 1024;
+    if ($_FILES['photo']['size'] > $max_photo) {
+      header("Location: students.php?error=" . urlencode("Photo must be under 5MB.") . "&open_add=1");
+      exit;
+    }
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $real_mime = $finfo->file($_FILES['photo']['tmp_name']);
+    $allowed_mime_ext = ['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','image/gif'=>'gif'];
+    if (!isset($allowed_mime_ext[$real_mime])) {
       header("Location: students.php?error=" . urlencode("Photo must be JPG, PNG, WEBP, or GIF.") . "&open_add=1");
       exit;
     }
-    $photo = uniqid() . '_' . basename($_FILES['photo']['name']);
+    $photo = uniqid() . '.' . $allowed_mime_ext[$real_mime];
     move_uploaded_file($_FILES['photo']['tmp_name'], "uploads/" . $photo);
   }
 

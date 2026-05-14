@@ -1,11 +1,13 @@
 <?php
 include('../mysql/db.php');
 session_start();
+require_once '../mysql/helpers.php';
 
 if (!isset($_SESSION['name'])) {
   header('Location: ../index.php');
   exit();
 }
+requireRole(['superadmin','registrar']);
 
 $search       = $_GET['search'] ?? '';
 $filter_grade  = $_GET['grade']  ?? '';

@@ -25,8 +25,7 @@ if (!$student) {
 // Gate: require a payment scheme before showing the SOA
 $enrollment = $conn->query("SELECT * FROM enrollments WHERE student_id=$student_id AND school_year_id=$sy_id LIMIT 1")->fetch_assoc();
 $scheme_selected = !empty($enrollment['payment_plan']);
-if (!$scheme_selected) {
-  echo '<!DOCTYPE html><html><head><meta charset="UTF-8">
+if (!$scheme_selected) {  echo '<!DOCTYPE html><html><head><meta charset="UTF-8">
     <link rel="stylesheet" href="../css/portal.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     </head><body>';
@@ -66,14 +65,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_proof'])) {
     $error = "Please select a file to upload.";
   } else {
     $allowed = ['image/jpeg','image/png','image/webp','application/pdf'];
-    if (!in_array($_FILES['proof']['type'], $allowed)) {
+    // Server-side MIME check using finfo
+    $finfo_soa = new finfo(FILEINFO_MIME_TYPE);
+    $real_mime_soa = $finfo_soa->file($_FILES['proof']['tmp_name']);
+    if (!in_array($real_mime_soa, $allowed)) {
       $error = "Only JPG, PNG, WEBP, or PDF allowed.";
     } elseif ($_FILES['proof']['size'] > 5 * 1024 * 1024) {
       $error = "File must be under 5MB.";
     } else {
       $upload_path = __DIR__ . '/../pages/uploads/';
       if (!is_dir($upload_path)) mkdir($upload_path, 0755, true);
-      $fname = 'proof_' . $student_id . '_' . uniqid() . '.' . strtolower(pathinfo($_FILES['proof']['name'], PATHINFO_EXTENSION));
+      // Derive extension from verified MIME type, not original filename
+      $soa_mime_ext = ['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','application/pdf'=>'pdf'];
+      $fname = 'proof_' . $student_id . '_' . uniqid() . '.' . $soa_mime_ext[$real_mime_soa];
       move_uploaded_file($_FILES['proof']['tmp_name'], $upload_path . $fname);
 
       // Apply proof to all unpaid fees for this student
@@ -86,7 +90,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_proof'])) {
       foreach ($fees_to_pay as $f) {
         $existing = $conn->query("SELECT id FROM payments WHERE student_id=$student_id AND fee_id={$f['fee_id']} LIMIT 1")->fetch_assoc();
         if ($existing) {
-          $conn->query("UPDATE payments SET proof_file='$fname', payment_method='$pay_method' WHERE id={$existing['id']}");
+          $upd = $conn->prepare("UPDATE payments SET proof_file=?, payment_method=? WHERE id=?");
+          $upd->bind_param("ssi", $fname, $pay_method, $existing['id']);
+          $upd->execute();
         } else {
           $stmt = $conn->prepare("INSERT INTO payments (student_id, fee_id, amount_paid, balance, status, payment_method, proof_file) VALUES (?,?,0,?,'unpaid',?,?)");
           $stmt->bind_param("iidss", $student_id, $f['fee_id'], $f['amount'], $pay_method, $fname);

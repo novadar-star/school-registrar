@@ -102,9 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 $active_sy   = $conn->query("SELECT * FROM school_years WHERE is_active=1 LIMIT 1")->fetch_assoc();
 $sy_id       = $active_sy['id'] ?? 0;
-$filter_status = $_GET['status'] ?? '';
-$search      = $_GET['search'] ?? '';
-$searchParam = "%$search%";
+$filter_status = in_array($_GET['status'] ?? '', ['pending','enrolled','dropped']) ? $_GET['status'] : '';
+$search      = trim($_GET['search'] ?? '');
 $sy_list     = $conn->query("SELECT * FROM school_years ORDER BY label DESC")->fetch_all(MYSQLI_ASSOC);
 $grade_list  = $conn->query("SELECT * FROM grade_levels ORDER BY id")->fetch_all(MYSQLI_ASSOC);
 
@@ -118,12 +117,8 @@ $unenrolled = $conn->query("
   ORDER BY s.last_name ASC
 ")->fetch_all(MYSQLI_ASSOC);
 
-// Enrolled list with search
-$where = "e.school_year_id = $sy_id";
-if ($filter_status) $where .= " AND e.status = '" . $conn->real_escape_string($filter_status) . "'";
-if ($search) $where .= " AND (s.first_name LIKE '$searchParam' OR s.last_name LIKE '$searchParam' OR s.lrn LIKE '$searchParam' OR e.ref_number LIKE '$searchParam')";
-
-$enrollments = $conn->query("
+// Enrolled list with parameterized search
+$base_sql = "
   SELECT e.id, e.ref_number, e.status, e.enrolled_at,
          s.first_name, s.last_name, s.lrn, s.photo, s.id as student_id,
          g.name as grade, sec.name as section
@@ -131,9 +126,28 @@ $enrollments = $conn->query("
   JOIN students s ON e.student_id = s.id
   LEFT JOIN grade_levels g ON e.grade_level_id = g.id
   LEFT JOIN sections sec ON e.section_id = sec.id
-  WHERE $where
-  ORDER BY e.enrolled_at DESC
-");
+  WHERE e.school_year_id = ?";
+
+$bind_types = "i";
+$bind_vals  = [$sy_id];
+
+if ($filter_status) {
+  $base_sql   .= " AND e.status = ?";
+  $bind_types .= "s";
+  $bind_vals[] = $filter_status;
+}
+if ($search !== '') {
+  $sp = "%$search%";
+  $base_sql   .= " AND (s.first_name LIKE ? OR s.last_name LIKE ? OR s.lrn LIKE ? OR e.ref_number LIKE ?)";
+  $bind_types .= "ssss";
+  $bind_vals[] = $sp; $bind_vals[] = $sp; $bind_vals[] = $sp; $bind_vals[] = $sp;
+}
+$base_sql .= " ORDER BY e.enrolled_at DESC";
+
+$enroll_stmt = $conn->prepare($base_sql);
+$enroll_stmt->bind_param($bind_types, ...$bind_vals);
+$enroll_stmt->execute();
+$enrollments = $enroll_stmt->get_result();
 
 $success_message = $_GET['success'] ?? '';
 $error_message   = $_GET['error']   ?? '';
@@ -215,7 +229,7 @@ $active_page = 'enrollment';
             <td class="td-muted"><?= htmlspecialchars($e['lrn']) ?></td>
             <td><?= htmlspecialchars($e['grade'] ?? '—') ?></td>
             <td>
-              <span class="enroll-status-badge status-<?= $e['status'] ?>"><?= ucfirst($e['status']) ?></span>
+              <span class="enroll-status-badge status-<?= htmlspecialchars($e['status']) ?>"><?= htmlspecialchars(ucfirst($e['status'])) ?></span>
             </td>
             <td class="td-muted"><?= date('M j, Y', strtotime($e['enrolled_at'])) ?></td>
             <td>

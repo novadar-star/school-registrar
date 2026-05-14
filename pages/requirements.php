@@ -48,7 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'admin
   if (!empty($_FILES['doc_file']['tmp_name'])) {
     $allowed = ['image/jpeg','image/png','image/webp','application/pdf'];
     $max_size = 3 * 1024 * 1024; // 3MB
-    if (!in_array($_FILES['doc_file']['type'], $allowed)) {
+    // Server-side MIME check
+    $finfo_adm = new finfo(FILEINFO_MIME_TYPE);
+    $real_mime_adm = $finfo_adm->file($_FILES['doc_file']['tmp_name']);
+    if (!in_array($real_mime_adm, $allowed)) {
       header("Location: requirements.php?student_id=$sid&error=Only JPG, PNG, WEBP, PDF allowed"); exit();
     }
     if ($_FILES['doc_file']['size'] > $max_size) {
@@ -133,10 +136,10 @@ if (isset($_GET['notify_missing'])) {
   header("Location: requirements.php?student_id=$sid&success=No missing documents to notify"); exit();
 }
 
-$search = $_GET['search'] ?? '';
-$searchParam = "%$search%";
+$search = trim($_GET['search'] ?? '');
 
-$students_req = $conn->query("
+// Parameterized search for student list
+$req_list_sql = "
   SELECT s.id, s.first_name, s.last_name, s.lrn, g.name as grade,
     COUNT(r.id) as total_req,
     SUM(sr.status='verified') as verified,
@@ -147,12 +150,23 @@ $students_req = $conn->query("
   FROM students s
   LEFT JOIN grade_levels g ON s.grade_level_id = g.id
   LEFT JOIN requirements r ON (r.student_type = 'both' OR r.student_type = s.student_type) AND r.is_required = 1
-  LEFT JOIN student_requirements sr ON sr.student_id = s.id AND sr.requirement_id = r.id AND sr.school_year_id = $sy_id
-  WHERE s.is_archived = 0
-    AND (s.first_name LIKE '$searchParam' OR s.last_name LIKE '$searchParam' OR s.lrn LIKE '$searchParam')
-  GROUP BY s.id
-  ORDER BY s.last_name ASC
-");
+  LEFT JOIN student_requirements sr ON sr.student_id = s.id AND sr.requirement_id = r.id AND sr.school_year_id = ?
+  WHERE s.is_archived = 0";
+
+$req_bind_types = "i";
+$req_bind_vals  = [$sy_id];
+if ($search !== '') {
+  $sp = "%$search%";
+  $req_list_sql   .= " AND (s.first_name LIKE ? OR s.last_name LIKE ? OR s.lrn LIKE ?)";
+  $req_bind_types .= "sss";
+  $req_bind_vals[] = $sp; $req_bind_vals[] = $sp; $req_bind_vals[] = $sp;
+}
+$req_list_sql .= " GROUP BY s.id ORDER BY s.last_name ASC";
+
+$req_list_stmt = $conn->prepare($req_list_sql);
+$req_list_stmt->bind_param($req_bind_types, ...$req_bind_vals);
+$req_list_stmt->execute();
+$students_req = $req_list_stmt->get_result();
 
 $detail_student = null;
 $detail_reqs    = [];
@@ -227,9 +241,9 @@ $active_page = 'requirements';
       <?php foreach ($detail_reqs as $req):
         $status = $req['status'] ?? 'missing';
       ?>
-      <div class="req-item req-<?= $status ?>">
+      <div class="req-item req-<?= htmlspecialchars($status) ?>">
         <div class="req-item-left">
-          <div class="req-status-dot dot-<?= $status ?>"></div>
+          <div class="req-status-dot dot-<?= htmlspecialchars($status) ?>"></div>
           <div>
             <div class="req-name"><?= htmlspecialchars($req['name']) ?></div>
             <?php if ($req['submitted_at']): ?><div class="req-date">Submitted: <?= date('M j, Y', strtotime($req['submitted_at'])) ?></div><?php endif; ?>

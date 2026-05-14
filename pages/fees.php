@@ -3,8 +3,7 @@ session_start();
 include('../mysql/db.php');
 require_once '../mysql/helpers.php';
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
-
-// Handle add/edit
+requireRole(['superadmin','registrar','finance']);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $id             = intval($_POST['id'] ?? 0);
   $grade_level_id = intval($_POST['grade_level_id']);
@@ -15,8 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $allowed_types  = ['tuition','miscellaneous','pta_fund','development','books','sped','other'];
   if (!in_array($fee_type, $allowed_types)) $fee_type = 'tuition';
 
-  if (empty($name) || $grade_level_id <= 0 || $school_year_id <= 0) {
-    header("Location: fees.php?error=" . urlencode("All fields are required.")); exit();
+  if (empty($name) || $grade_level_id <= 0 || $school_year_id <= 0 || $amount <= 0) {
+    header("Location: fees.php?error=" . urlencode("All fields are required and amount must be greater than zero.")); exit();
   }
 
   if ($id > 0) {

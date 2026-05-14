@@ -22,8 +22,8 @@ if ($mode === 'reset' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $error = "All fields are required.";
   } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $error = "Enter a valid email address.";
-  } elseif (strlen($new_pass) < 6) {
-    $error = "Password must be at least 6 characters.";
+  } elseif (strlen($new_pass) < 8) {
+    $error = "Password must be at least 8 characters.";
   } elseif ($new_pass !== $confirm) {
     $error = "Passwords do not match.";
   } else {
@@ -55,11 +55,28 @@ if ($mode === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($success
   $stmt->execute();
   $parent = $stmt->get_result()->fetch_assoc();
 
-  if ($parent && password_verify($password, $parent['password'])) {
-    $_SESSION['parent_id']   = $parent['id'];
-    $_SESSION['parent_name'] = $parent['name'];
-    $_SESSION['student_id']  = null;
-    header('Location: dashboard.php'); exit();
+  if ($parent) {
+    // Check lockout (5 attempts, 15-minute window)
+    if (!empty($parent['locked_at']) && strtotime($parent['locked_at']) > time() - 900) {
+      $error = "Account temporarily locked due to too many failed attempts. Try again in 15 minutes.";
+    } elseif (password_verify($password, $parent['password'])) {
+      // Reset failed attempts on success
+      $conn->query("UPDATE parent_accounts SET failed_attempts=0, locked_at=NULL WHERE id={$parent['id']}");
+      $_SESSION['parent_id']   = $parent['id'];
+      $_SESSION['parent_name'] = $parent['name'];
+      $_SESSION['student_id']  = null;
+      session_regenerate_id(true);
+      header('Location: dashboard.php'); exit();
+    } else {
+      $attempts = intval($parent['failed_attempts'] ?? 0) + 1;
+      if ($attempts >= 5) {
+        $conn->query("UPDATE parent_accounts SET failed_attempts=$attempts, locked_at=NOW() WHERE id={$parent['id']}");
+        $error = "Too many failed attempts. Account locked for 15 minutes.";
+      } else {
+        $conn->query("UPDATE parent_accounts SET failed_attempts=$attempts WHERE id={$parent['id']}");
+        $error = "Invalid email or password.";
+      }
+    }
   } else {
     $error = "Invalid email or password.";
   }

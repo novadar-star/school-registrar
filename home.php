@@ -209,6 +209,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
     $enroll_error = "Passwords do not match. Please re-enter.";
   } elseif (empty($children)) {
     $enroll_error = "Please add at least one child.";
+  } elseif (count($children) > 10) {
+    $enroll_error = "Too many children submitted. Please contact the registrar directly.";
   } else {
     $p_name     = trim("$p_first $p_middle $p_last");
     $p_birthday = (!empty($p_bday_y) && !empty($p_bday_m) && !empty($p_bday_d))
@@ -319,9 +321,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
         'doc_goodmoral' => 'Good Moral Certificate',
       ];
       foreach ($doc_map as $field => $req_name) {
-        if (!empty($_FILES[$field]['tmp_name']) && in_array($_FILES[$field]['type'], $allowed_types)) {
+        if (!empty($_FILES[$field]['tmp_name'])) {
+          // Server-side MIME check using finfo
+          $finfo_doc = new finfo(FILEINFO_MIME_TYPE);
+          $real_doc_mime = $finfo_doc->file($_FILES[$field]['tmp_name']);
+          $allowed_doc_mime_ext = ['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','application/pdf'=>'pdf'];
+          if (!isset($allowed_doc_mime_ext[$real_doc_mime])) continue;
+          if ($_FILES[$field]['size'] > 5 * 1024 * 1024) continue; // 5MB max
           // Find requirement ID by name
-          $req_row = $conn->query("SELECT id FROM requirements WHERE name LIKE '%Form 138%' OR name LIKE '%Good Moral%' LIMIT 1");
           $req_stmt = $conn->prepare("SELECT id FROM requirements WHERE name = ? LIMIT 1");
           $req_stmt->bind_param("s", $req_name);
           $req_stmt->execute();
@@ -329,7 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
           if (!$req_row) continue;
 
           $req_id  = $req_row['id'];
-          $ext     = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION));
+          $ext     = $allowed_doc_mime_ext[$real_doc_mime];
           $fname   = 'req_' . $student_id . '_' . $req_id . '_' . uniqid() . '.' . $ext;
           if (move_uploaded_file($_FILES[$field]['tmp_name'], $upload_dir . $fname)) {
             $ins = $conn->prepare("INSERT INTO student_requirements

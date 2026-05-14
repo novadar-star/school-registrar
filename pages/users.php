@@ -17,13 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $id       = intval($_POST['id'] ?? 0);
   $name     = trim($_POST['name'] ?? '');
   $email    = trim($_POST['email'] ?? '');
-  $role     = $_POST['role'] ?? 'registrar';
+  $role     = in_array($_POST['role'] ?? '', ['registrar','finance','superadmin']) ? $_POST['role'] : 'registrar';
   $password = trim($_POST['password'] ?? '');
 
   if (empty($name) || empty($email)) {
     $error_message = "Name and email are required.";
+  } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $error_message = "Please enter a valid email address.";
   } elseif ($id === 0 && empty($password)) {
     $error_message = "Password is required for new users.";
+  } elseif (!empty($password) && strlen($password) < 8) {
+    $error_message = "Password must be at least 8 characters.";
   } else {
     if ($id > 0) {
       // Edit — only update password if provided

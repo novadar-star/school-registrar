@@ -140,19 +140,128 @@ function last_day_of(int $month, int $year): string {
 }
 
 /**
- * Payment scheme definitions — fixed amounts per COJ business rules.
- * Returns downpayment, installments, due dates for a given scheme.
- * All installment due dates fall on the last day of their respective month.
+ * Compute the net total fees for a student (fees minus discounts).
+ * Used as the basis for payment scheme amounts.
+ */
+function get_net_total_for_student($conn, int $student_id, int $grade_level_id, int $sy_id): float {
+  $fee_data = get_fees($conn, $grade_level_id, $sy_id);
+  $total    = $fee_data['total'];
+
+  $discounts_raw = $conn->query("SELECT * FROM discounts WHERE student_id=$student_id AND school_year_id=$sy_id")->fetch_all(MYSQLI_ASSOC);
+  $discount = 0;
+  foreach ($discounts_raw as $d) {
+    if (!empty($d['fixed_amount']) && $d['fixed_amount'] > 0) {
+      $discount += floatval($d['fixed_amount']);
+    } else {
+      $discount += $total * (floatval($d['percentage']) / 100);
+    }
+  }
+  return max(0, $total - min($discount, $total));
+}
+
+/**
+ * Build payment scheme installment config dynamically from the student's net total.
+ * Downpayment and installment amounts are derived from actual fees + discounts.
+ *
+ * Scheme breakdown ratios (COJ business rules):
+ *   Annual:      100% upfront
+ *   Semi-Annual: ~58.25% down, ~44.25% in November
+ *   Quarterly:   ~36.5% down, ~21.17% × 3 installments
+ *   Monthly:     ~24.4% down, ~7.87% × 8 monthly payments
+ *
+ * We round installments to 2 decimal places and adjust the last installment
+ * to absorb any rounding difference so the total always equals net_total.
+ */
+function get_payment_scheme_config_for_student($conn, int $student_id, int $grade_level_id, int $sy_id, string $scheme): array {
+  $net = get_net_total_for_student($conn, $student_id, $grade_level_id, $sy_id);
+  return build_scheme_config($scheme, $net);
+}
+
+/**
+ * Build scheme config from a given net total amount.
+ * Used both for display (before selection) and for generating the schedule.
+ */
+function build_scheme_config(string $scheme, float $net_total): array {
+  $y  = (int) date('Y');
+  $y1 = $y + 1;
+
+  // Compute amounts based on net_total
+  switch ($scheme) {
+    case 'annual':
+      $dp = round($net_total, 2);
+      $installments = [];
+      break;
+
+    case 'semi_annual':
+      // ~58.25% down, remainder in November
+      $dp  = round($net_total * 0.5825, 2);
+      $rem = round($net_total - $dp, 2);
+      $installments = [
+        ['label' => '2nd Payment (November)', 'amount' => $rem, 'due_date' => last_day_of(11, $y)],
+      ];
+      break;
+
+    case 'quarterly':
+      // ~36.5% down, 3 equal installments
+      $dp   = round($net_total * 0.365, 2);
+      $inst = round(($net_total - $dp) / 3, 2);
+      // Absorb rounding in last installment
+      $last = round($net_total - $dp - ($inst * 2), 2);
+      $installments = [
+        ['label' => '2nd Payment (August)',   'amount' => $inst, 'due_date' => last_day_of(8,  $y)],
+        ['label' => '3rd Payment (November)', 'amount' => $inst, 'due_date' => last_day_of(11, $y)],
+        ['label' => '4th Payment (February)', 'amount' => $last, 'due_date' => last_day_of(2,  $y1)],
+      ];
+      break;
+
+    case 'monthly':
+    default:
+      // ~24.4% down, 8 equal monthly payments
+      $dp   = round($net_total * 0.244, 2);
+      $inst = round(($net_total - $dp) / 8, 2);
+      $last = round($net_total - $dp - ($inst * 7), 2);
+      $installments = [
+        ['label' => 'July Payment',      'amount' => $inst, 'due_date' => last_day_of(7,  $y)],
+        ['label' => 'August Payment',    'amount' => $inst, 'due_date' => last_day_of(8,  $y)],
+        ['label' => 'September Payment', 'amount' => $inst, 'due_date' => last_day_of(9,  $y)],
+        ['label' => 'October Payment',   'amount' => $inst, 'due_date' => last_day_of(10, $y)],
+        ['label' => 'November Payment',  'amount' => $inst, 'due_date' => last_day_of(11, $y)],
+        ['label' => 'December Payment',  'amount' => $inst, 'due_date' => last_day_of(12, $y)],
+        ['label' => 'January Payment',   'amount' => $inst, 'due_date' => last_day_of(1,  $y1)],
+        ['label' => 'February Payment',  'amount' => $last, 'due_date' => last_day_of(2,  $y1)],
+      ];
+      break;
+  }
+
+  $labels = [
+    'annual'      => 'Annual',
+    'semi_annual' => 'Semi-Annual',
+    'quarterly'   => 'Quarterly',
+    'monthly'     => 'Monthly',
+  ];
+
+  return [
+    'label'        => $labels[$scheme] ?? ucfirst($scheme),
+    'downpayment'  => $dp,
+    'net_total'    => $net_total,
+    'installments' => $installments,
+  ];
+}
+
+/**
+ * Payment scheme definitions — kept for backward compatibility.
+ * New code should use get_payment_scheme_config_for_student() instead.
+ * @deprecated Use build_scheme_config() with the student's actual net total.
  */
 function get_payment_scheme_config(string $scheme): array {
-  $y  = (int) date('Y');   // current year (school year start)
-  $y1 = $y + 1;            // next calendar year (Jan/Feb payments)
+  $y  = (int) date('Y');
+  $y1 = $y + 1;
 
   $schemes = [
     'annual' => [
       'label'        => 'Annual',
       'downpayment'  => 95890.00,
-      'installments' => [],  // fully paid on downpayment
+      'installments' => [],
     ],
     'semi_annual' => [
       'label'        => 'Semi-Annual',
@@ -198,8 +307,14 @@ function generate_payment_schedule($conn, int $student_id, int $enrollment_id, i
   $existing = $conn->query("SELECT COUNT(*) as c FROM payment_schedules WHERE enrollment_id=$enrollment_id")->fetch_assoc()['c'];
   if ($existing > 0) return false; // already set, locked
 
-  $config = get_payment_scheme_config($scheme);
-  if (empty($config)) return false;
+  // Get student's grade level for fee lookup
+  $student_row = $conn->query("SELECT grade_level_id FROM students WHERE id=$student_id LIMIT 1")->fetch_assoc();
+  $grade_level_id = intval($student_row['grade_level_id'] ?? 0);
+  if (!$grade_level_id) return false;
+
+  // Build config dynamically from actual fees + discounts
+  $config = get_payment_scheme_config_for_student($conn, $student_id, $grade_level_id, $sy_id, $scheme);
+  if (empty($config) || $config['net_total'] <= 0) return false;
 
   // Insert downpayment row — due June 30 of the current school year
   $dp_label  = 'Downpayment (' . $config['label'] . ')';

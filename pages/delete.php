@@ -6,6 +6,8 @@ if (!isset($_SESSION['name'])) {
 }
 
 include('../mysql/db.php');
+require_once '../mysql/helpers.php';
+requireRole(['superadmin','registrar']);
 
 if (isset($_GET['id'])) {
   $id = intval($_GET['id']);

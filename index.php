@@ -24,12 +24,26 @@ if (isset($_POST['submit'])) {
       $email_err = "Email is not registered.";
     } elseif (!$row['is_active']) {
       $password_err = "This account has been deactivated. Contact your administrator.";
+    } elseif (!empty($row['locked_at']) && strtotime($row['locked_at']) > time() - 900) {
+      // Locked for 15 minutes
+      $password_err = "Account temporarily locked due to too many failed attempts. Try again in 15 minutes.";
     } elseif (!password_verify($password, $row['password'])) {
-      $password_err = "Incorrect password.";
+      // Increment failed attempts
+      $attempts = intval($row['failed_attempts'] ?? 0) + 1;
+      if ($attempts >= 5) {
+        $conn->query("UPDATE users SET failed_attempts=$attempts, locked_at=NOW() WHERE id={$row['id']}");
+        $password_err = "Too many failed attempts. Account locked for 15 minutes.";
+      } else {
+        $conn->query("UPDATE users SET failed_attempts=$attempts WHERE id={$row['id']}");
+        $password_err = "Incorrect password. " . (5 - $attempts) . " attempt(s) remaining.";
+      }
     } else {
+      // Successful login — reset failed attempts
+      $conn->query("UPDATE users SET failed_attempts=0, locked_at=NULL WHERE id={$row['id']}");
       $_SESSION['name']    = $row['name'];
       $_SESSION['role']    = $row['role'];
       $_SESSION['user_id'] = $row['id'];
+      session_regenerate_id(true);
       header("Location: pages/dashboard.php");
       exit();
     }

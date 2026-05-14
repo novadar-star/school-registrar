@@ -259,7 +259,7 @@ if (!empty($_GET['edit_id'])) {
                  <!-- contact -->
               <td><?= htmlspecialchars($row['contact_number']) ?></td>
               <!-- Status -->
-                <td><span class="badge <?= $badge ?>"><?= $row['student_type'] ?></span></td>
+                <td><span class="badge <?= $badge ?>"><?= htmlspecialchars($row['student_type']) ?></span></td>
 
               <!-- Action -->
               <td>

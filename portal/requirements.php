@@ -36,7 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } else {
     $allowed  = ['image/jpeg','image/png','image/webp','application/pdf'];
     $max_size = 3 * 1024 * 1024; // 3MB
-    if (!in_array($_FILES['doc_file']['type'], $allowed)) {
+    // Server-side MIME check using finfo (not browser-supplied type)
+    $finfo_p = new finfo(FILEINFO_MIME_TYPE);
+    $real_mime_p = $finfo_p->file($_FILES['doc_file']['tmp_name']);
+    if (!in_array($real_mime_p, $allowed)) {
       $error = "Only JPG, PNG, WEBP, or PDF files are allowed.";
     } elseif ($_FILES['doc_file']['size'] > $max_size) {
       $error = "File must be under 3MB.";

@@ -3,6 +3,7 @@ session_start();
 include('../mysql/db.php');
 require_once '../mysql/helpers.php';
 if (!isset($_SESSION['name'])) { header('Location: ../index.php'); exit(); }
+requireRole(['superadmin','registrar','finance']);
 
 $active_sy = $conn->query("SELECT * FROM school_years WHERE is_active=1 LIMIT 1")->fetch_assoc();
 $sy_id     = $active_sy['id'] ?? 0;
@@ -11,8 +12,8 @@ $sy_id     = $active_sy['id'] ?? 0;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add') {
   $student_id   = intval($_POST['student_id']);
   $type         = trim($_POST['type'] ?? '');
-  $percentage   = floatval($_POST['percentage'] ?? 0);
-  $fixed_amount = floatval($_POST['fixed_amount'] ?? 0);
+  $percentage   = min(100, max(0, floatval($_POST['percentage'] ?? 0)));
+  $fixed_amount = max(0, floatval($_POST['fixed_amount'] ?? 0));
   $label        = trim($_POST['label'] ?? '');
   $allowed_types = ['employee','sibling','scholarship','other'];
 
