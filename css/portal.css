@@ -429,3 +429,159 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); -web
   .timeline-steps { flex-direction: column; gap: 16px; }
   .timeline-connector { display: none; }
 }
+
+
+/* ==========================================================
+   MOBILE RESPONSIVE — Portal (max-width: 768px)
+   ========================================================== */
+
+/* ── Hamburger button ── */
+.portal-nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: background .2s;
+}
+.portal-nav-toggle:hover { background: rgba(255,255,255,.15); }
+
+@media (max-width: 768px) {
+
+  /* ── Nav ── */
+  .portal-nav {
+    padding: 0 16px;
+    height: 56px;
+    flex-wrap: wrap;
+    position: relative;
+  }
+
+  .portal-nav-toggle { display: flex; align-items: center; justify-content: center; }
+
+  .portal-nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    background: var(--primary);
+    padding: 8px 0 12px;
+    gap: 2px;
+    order: 3;
+  }
+  .portal-nav-links.open { display: flex; }
+
+  .portal-nav-links a {
+    padding: 10px 16px;
+    border-radius: 0;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .portal-nav-links a:last-child { border-bottom: none; }
+
+  .portal-nav-user {
+    font-size: 12px;
+    gap: 6px;
+  }
+  .portal-nav-user span {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Container ── */
+  .portal-container { padding: 20px 16px; }
+
+  .portal-page-header h2 { font-size: 18px; }
+  .portal-page-header p  { font-size: 12px; }
+
+  /* ── Login card ── */
+  .portal-login-card {
+    padding: 32px 24px;
+    border-radius: 12px;
+  }
+
+  /* ── Student card ── */
+  .portal-student-card {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  /* ── Summary grid: 1 col on mobile ── */
+  .portal-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── SOA summary: 1 col ── */
+  .soa-summary {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── SOA table: horizontal scroll ── */
+  .soa-table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .soa-table { min-width: 520px; }
+
+  /* ── Requirements list ── */
+  .portal-req-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .portal-req-right {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .portal-file-input { max-width: 100%; width: 100%; }
+  .portal-btn-upload { width: 100%; justify-content: center; text-align: center; }
+
+  /* ── Timeline: vertical on very small screens ── */
+  .portal-timeline { padding: 16px; }
+  .timeline-header { flex-direction: column; align-items: flex-start; gap: 6px; }
+
+  /* ── Clearance grid: 1 col ── */
+  .portal-clearance-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Payment scheme table: horizontal scroll ── */
+  .portal-container table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* ── Buttons full-width ── */
+  .portal-btn-login { font-size: 15px; padding: 13px; }
+
+  /* ── Upload form on SOA ── */
+  .portal-container input[type="file"] {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* ── Payment method radio row ── */
+  .portal-container div[style*="display:flex"][style*="gap:10px"] {
+    flex-direction: column;
+  }
+
+  /* ── Multi-child switcher ── */
+  .portal-container div[style*="flex-wrap:wrap"] {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .portal-login-card { padding: 28px 18px; }
+  .portal-login-card h1 { font-size: 18px; }
+  .portal-nav-brand span { display: none; }
+  .portal-nav-brand img { width: 28px; height: 28px; }
+  .soa-sum-val { font-size: 20px; }
+  .portal-student-name { font-size: 14px; }
+}

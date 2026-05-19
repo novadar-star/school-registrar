@@ -80,8 +80,8 @@ if (isset($_SESSION['user_id'])) {
     <div class="nav-item <?= $active_page==='users'?'active':'' ?>" data-href="users.php" data-label="Users">
       <span class="nav-icon"><i class="bi bi-shield-lock-fill"></i></span><span class="nav-text">Users</span>
     </div>
-    <div class="nav-item <?= $active_page==='backup'?'active':'' ?>" data-href="backup.php" data-label="Export">
-      <span class="nav-icon"><i class="bi bi-database-fill-down"></i></span><span class="nav-text">Data Export</span>
+    <div class="nav-item <?= $active_page==='backup'?'active':'' ?>" data-href="backup.php" data-label="Recovery">
+      <span class="nav-icon"><i class="bi bi-database-fill-down"></i></span><span class="nav-text">Data Recovery</span>
     </div>
     <?php endif; ?>
 

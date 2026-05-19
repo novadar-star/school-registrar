@@ -78,6 +78,7 @@ $reqs = $conn->query("
   FROM requirements r
   LEFT JOIN student_requirements sr ON sr.requirement_id=r.id AND sr.student_id=$student_id AND sr.school_year_id=$sy_id
   WHERE r.is_required=1 AND (r.student_type='both' OR r.student_type='{$student['student_type']}')
+  GROUP BY r.id
   ORDER BY r.sort_order
 ")->fetch_all(MYSQLI_ASSOC);
 

@@ -35,7 +35,7 @@ if (isset($_GET['mark_received'])) {
   $stmt = $conn->prepare("INSERT INTO student_requirements (student_id, requirement_id, school_year_id, status, submitted_at, verified_by, verified_at, uploaded_by, uploaded_by_role)
     VALUES (?,?,?,'verified',NOW(),?,NOW(),?,?)
     ON DUPLICATE KEY UPDATE status='verified', submitted_at=NOW(), verified_by=VALUES(verified_by), verified_at=NOW(), uploaded_by=VALUES(uploaded_by), uploaded_by_role=VALUES(uploaded_by_role)");
-  $stmt->bind_param("iiiiii", $sid, $req_id, $sy_id, $uid, $uid, $role);
+  $stmt->bind_param("iiiiis", $sid, $req_id, $sy_id, $uid, $uid, $role);
   $stmt->execute();
   audit_log($conn, $uid, $uname, 'mark_received', 'student_requirement', $req_id, "Student $sid");
   header("Location: requirements.php?student_id=$sid&success=Document marked as received and verified"); exit();
@@ -179,6 +179,7 @@ if (!empty($_GET['student_id'])) {
     FROM requirements r
     LEFT JOIN student_requirements sr ON sr.requirement_id = r.id AND sr.student_id = $sid AND sr.school_year_id = $sy_id
     WHERE r.is_required = 1 AND (r.student_type = 'both' OR r.student_type = '{$detail_student['student_type']}')
+    GROUP BY r.id
     ORDER BY r.sort_order
   ");
   while ($row = $req_res->fetch_assoc()) $detail_reqs[] = $row;

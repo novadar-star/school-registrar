@@ -23,6 +23,21 @@ if (!$student) { header('Location: payments.php'); exit(); }
 $enrollment = $conn->query("SELECT * FROM enrollments WHERE student_id=$student_id AND school_year_id=$sy_id LIMIT 1")->fetch_assoc();
 $enrollment_id = $enrollment['id'] ?? 0;
 
+// Handle schedule regeneration (admin fix for mismatch)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'fix_schedule') {
+  $scheme = $enrollment['payment_plan'] ?? '';
+  $payment_activity = $conn->query("SELECT COUNT(*) as c FROM payments WHERE student_id=$student_id AND amount_paid > 0")->fetch_assoc()['c'] ?? 0;
+  if ($scheme && !$payment_activity) {
+    $conn->query("DELETE FROM payment_schedules WHERE enrollment_id=$enrollment_id");
+    $conn->query("UPDATE enrollments SET payment_plan=NULL WHERE id=$enrollment_id");
+    generate_payment_schedule($conn, $student_id, $enrollment_id, $sy_id, $scheme);
+    $uid   = $_SESSION['user_id'] ?? 0;
+    $uname = $conn->real_escape_string($_SESSION['name'] ?? '');
+    $conn->query("INSERT INTO audit_log (user_id, user_name, action, target, target_id, details) VALUES ($uid, '$uname', 'fix_schedule', 'enrollment', $enrollment_id, 'Regenerated payment schedule for student $student_id')");
+  }
+  header("Location: soa.php?student_id=$student_id&success=Payment schedule regenerated"); exit();
+}
+
 // Handle installment payment confirmation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'confirm_installment') {
   $sched_id   = intval($_POST['schedule_id']);
@@ -205,6 +220,34 @@ include('includes/sidebar.php');
         </tbody>
       </table>
       <div style="height:1px;background:var(--color-border);margin:0 24px;"></div>
+
+      <?php
+      // Mismatch check
+      $sched_total_admin = array_sum(array_column($schedule, 'amount_due'));
+      $soa_net_admin     = $net_fees;
+      $sched_match       = abs($sched_total_admin - $soa_net_admin) < 0.02;
+      $payment_activity_admin = $conn->query("SELECT COUNT(*) as c FROM payments WHERE student_id=$student_id AND amount_paid > 0")->fetch_assoc()['c'] ?? 0;
+      if (!$sched_match):
+      ?>
+      <div style="margin:0 24px 16px;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:12px 16px;font-size:13px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <span style="color:#b91c1c;font-weight:700;"><i class="bi bi-exclamation-triangle-fill"></i> Schedule mismatch</span>
+          <span style="color:#6b7280;margin-left:8px;">Schedule: ₱<?= number_format($sched_total_admin,2) ?> · Fees: ₱<?= number_format($soa_net_admin,2) ?></span>
+        </div>
+        <?php if (!$payment_activity_admin && $enrollment['payment_plan']): ?>
+        <form method="POST" action="soa.php?student_id=<?= $student_id ?>">
+          <input type="hidden" name="action" value="fix_schedule">
+          <button type="submit" onclick="return confirm('Regenerate the payment schedule to match the current fee total?')"
+            style="padding:5px 14px;background:#b91c1c;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;">
+            <i class="bi bi-arrow-repeat"></i> Fix Schedule
+          </button>
+        </form>
+        <?php else: ?>
+        <span style="font-size:12px;color:#b91c1c;">Cannot auto-fix — payment already recorded.</span>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
+
       <?php endif; ?>
 
       <table class="soa-table">
@@ -337,7 +380,10 @@ include('includes/sidebar.php');
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-cancel" onclick="document.getElementById('inst-modal').classList.remove('open')">Cancel</button>
-        <button type="submit" class="btn-save">Confirm Payment</button>
+        <button type="submit" class="btn-save"
+                onclick="return confirm('Are you sure you want to confirm this installment payment? This action cannot be undone.')">
+          Confirm Payment
+        </button>
       </div>
     </form>
   </div>

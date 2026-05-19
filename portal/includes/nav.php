@@ -12,7 +12,7 @@ if (isset($parent_id)) {
     <img src="../images/COJ.png" alt="COJ"/>
     <span>Parent Portal</span>
   </div>
-  <div class="portal-nav-links">
+  <div class="portal-nav-links" id="portalNavLinks">
     <a href="dashboard.php" class="<?= $active_portal==='dashboard'?'active':'' ?>"><i class="bi bi-grid-fill"></i> Dashboard</a>
     <a href="requirements.php" class="<?= $active_portal==='requirements'?'active':'' ?>"><i class="bi bi-folder2-open"></i> Requirements</a>
     <a href="payment_scheme.php" class="<?= $active_portal==='payment_scheme'?'active':'' ?>"><i class="bi bi-calendar3"></i> Payment Scheme</a>
@@ -26,10 +26,35 @@ if (isset($parent_id)) {
     <i class="bi bi-person-circle"></i>
     <span><?= htmlspecialchars($parent_name) ?></span>
     <a href="logout.php" class="portal-logout" onclick="return confirm('Are you sure you want to log out?')"><i class="bi bi-box-arrow-right"></i></a>
+    <button class="portal-nav-toggle" id="portalNavToggle" aria-label="Toggle navigation" aria-expanded="false">
+      <i class="bi bi-list" id="portalNavIcon"></i>
+    </button>
   </div>
 </nav>
 
 <script>
+// ── Hamburger toggle ───────────────────────────────────────
+(function () {
+  var btn   = document.getElementById('portalNavToggle');
+  var links = document.getElementById('portalNavLinks');
+  var icon  = document.getElementById('portalNavIcon');
+  if (btn && links) {
+    btn.addEventListener('click', function () {
+      var open = links.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      icon.className = open ? 'bi bi-x-lg' : 'bi bi-list';
+    });
+    // Close menu when a link is tapped
+    links.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        links.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+        icon.className = 'bi bi-list';
+      });
+    });
+  }
+})();
+
 // ── Live notification badge polling (every 30s) ────────────
 (function () {
   function updateBadge(count) {

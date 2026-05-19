@@ -57,8 +57,8 @@ if (isset($_GET['reject_doc'])) {
   header("Location: student_profile.php?id=$id&success=Document rejected"); exit();
 }
 
-// Fetch requirements for this student
-$reqs = $conn->query("
+// Fetch requirements for this student — deduplicated by requirement_id
+$reqs_raw = $conn->query("
   SELECT r.id as req_id, r.name, r.description,
          sr.id as sr_id, sr.status, sr.file_path, sr.submitted_at
   FROM requirements r
@@ -66,6 +66,25 @@ $reqs = $conn->query("
   WHERE r.is_required=1 AND (r.student_type='both' OR r.student_type='{$student['student_type']}')
   ORDER BY r.sort_order
 ")->fetch_all(MYSQLI_ASSOC);
+
+// Deduplicate: keep only one row per requirement_id (prefer verified > submitted > missing)
+$reqs_seen = [];
+$reqs = [];
+$status_priority = ['verified' => 3, 'submitted' => 2, 'to_follow' => 1, 'missing' => 0];
+foreach ($reqs_raw as $r) {
+  $rid = $r['req_id'];
+  if (!isset($reqs_seen[$rid])) {
+    $reqs_seen[$rid] = count($reqs);
+    $reqs[] = $r;
+  } else {
+    // Replace if this row has higher priority status
+    $existing_priority = $status_priority[$reqs[$reqs_seen[$rid]]['status'] ?? 'missing'] ?? 0;
+    $new_priority      = $status_priority[$r['status'] ?? 'missing'] ?? 0;
+    if ($new_priority > $existing_priority) {
+      $reqs[$reqs_seen[$rid]] = $r;
+    }
+  }
+}
 
 // Enrollment record
 $enrollment = $conn->query("SELECT * FROM enrollments WHERE student_id=$id AND school_year_id=$sy_id LIMIT 1")->fetch_assoc();

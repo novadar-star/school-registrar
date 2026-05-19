@@ -641,3 +641,96 @@ input[type="file"].ef-input::-webkit-file-upload-button,
   .ef-section-header { padding: 11px 14px; }
   .btn-enroll-submit { width: 100%; justify-content: center; padding: 14px 24px; }
 }
+
+
+/* ==========================================================
+   MOBILE RESPONSIVE — Landing Page (max-width: 768px)
+   ========================================================== */
+
+/* ── Hamburger ── */
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  font-size: 24px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: background .2s;
+}
+.nav-toggle:hover { background: rgba(255,255,255,.15); }
+
+@media (max-width: 768px) {
+
+  /* ── Navbar ── */
+  .navbar { padding: 0 16px; height: auto; min-height: 60px; flex-wrap: wrap; }
+
+  .nav-container {
+    flex-wrap: wrap;
+    padding: 10px 0;
+    gap: 0;
+  }
+
+  .nav-toggle { display: flex; align-items: center; }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    padding: 8px 0 12px;
+    gap: 2px;
+    order: 3;
+  }
+  .nav-links.open { display: flex; }
+
+  .nav-links a {
+    padding: 10px 4px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255,255,255,.10);
+    border-radius: 0;
+  }
+  .nav-links a:last-child { border-bottom: none; }
+  .nav-btn { background: none !important; padding: 10px 4px !important; }
+
+  .nav-school { font-size: 12px; }
+  .nav-tagline { display: none; }
+  .nav-brand img { width: 32px; height: 32px; }
+
+  /* ── Hero ── */
+  .hero { padding: 80px 16px 48px; }
+  .hero-content h1 { font-size: 2rem; }
+  .hero-content p  { font-size: 0.95rem; }
+  .hero-actions { flex-direction: column; gap: 10px; }
+  .btn-hero-primary, .btn-hero-secondary { width: 100%; text-align: center; padding: 13px 24px; }
+
+  /* ── Sections ── */
+  .section { padding: 48px 16px; }
+  .section-title { font-size: 1.5rem; margin-bottom: 24px; }
+  .section-sub { font-size: 14px; }
+
+  /* ── About grid: 1 col ── */
+  .about-grid { grid-template-columns: 1fr; }
+
+  /* ── Mission/Vision: 1 col ── */
+  .mv-grid { grid-template-columns: 1fr; }
+
+  /* ── Enrollment form ── */
+  .ef-2col, .ef-3col { grid-template-columns: 1fr !important; }
+  .ef-section-body { padding: 16px 14px; }
+  .ef-section-header { padding: 11px 14px; font-size: 12px; }
+  .btn-enroll-submit { width: 100%; justify-content: center; }
+
+  /* ── Footer ── */
+  .footer-inner { padding: 40px 16px 20px; }
+  .footer-top { grid-template-columns: 1fr; gap: 28px; }
+  .footer-links-col { grid-template-columns: 1fr 1fr; }
+  .footer-bottom { flex-direction: column; text-align: center; gap: 6px; }
+}
+
+@media (max-width: 480px) {
+  .hero-content h1 { font-size: 1.7rem; }
+  .hero-badge { font-size: 11px; padding: 5px 12px; }
+  .footer-links-col { grid-template-columns: 1fr; }
+}

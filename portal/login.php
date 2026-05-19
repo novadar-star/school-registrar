@@ -122,16 +122,24 @@ if ($mode === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($success
       </div>
       <div class="portal-field">
         <label>New Password</label>
-        <div class="portal-input-wrap">
+        <div class="portal-input-wrap" style="position:relative;">
           <i class="bi bi-lock-fill"></i>
-          <input type="password" name="new_pass" required placeholder="Min. 6 characters"/>
+          <input type="password" name="new_pass" id="reset-new-pass" required placeholder="Min. 6 characters"/>
+          <button type="button" onclick="toggleResetPw('reset-new-pass','icon-new-pass')"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#6b7280;font-size:16px;padding:0;line-height:1;">
+            <i class="bi bi-eye" id="icon-new-pass"></i>
+          </button>
         </div>
       </div>
       <div class="portal-field">
         <label>Confirm New Password</label>
-        <div class="portal-input-wrap">
+        <div class="portal-input-wrap" style="position:relative;">
           <i class="bi bi-lock-fill"></i>
-          <input type="password" name="confirm" required placeholder="Repeat password"/>
+          <input type="password" name="confirm" id="reset-confirm" required placeholder="Repeat password"/>
+          <button type="button" onclick="toggleResetPw('reset-confirm','icon-confirm')"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#6b7280;font-size:16px;padding:0;line-height:1;">
+            <i class="bi bi-eye" id="icon-confirm"></i>
+          </button>
         </div>
       </div>
       <button type="submit" class="portal-btn-login">Set New Password</button>
@@ -181,6 +189,13 @@ if ($mode === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($success
 function togglePortalPw() {
   const inp  = document.getElementById('portal-pw');
   const icon = document.getElementById('portal-pw-icon');
+  if (inp.type === 'password') { inp.type = 'text'; icon.className = 'bi bi-eye-slash'; }
+  else { inp.type = 'password'; icon.className = 'bi bi-eye'; }
+}
+function toggleResetPw(inputId, iconId) {
+  const inp  = document.getElementById(inputId);
+  const icon = document.getElementById(iconId);
+  if (!inp || !icon) return;
   if (inp.type === 'password') { inp.type = 'text'; icon.className = 'bi bi-eye-slash'; }
   else { inp.type = 'password'; icon.className = 'bi bi-eye'; }
 }

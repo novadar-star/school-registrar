@@ -69,7 +69,10 @@ function gradeOptions(array $groups): string {
         <div class="nav-tagline">Forming Christian Servant Leaders</div>
       </div>
     </div>
-    <div class="nav-links">
+    <button class="nav-toggle" id="homeNavToggle" aria-label="Toggle navigation" aria-expanded="false">
+      <i class="bi bi-list" id="homeNavIcon"></i>
+    </button>
+    <div class="nav-links" id="homeNavLinks">
       <a href="#home">Home</a>
       <a href="#about">About</a>
       <a href="#enroll">Enrollment</a>
@@ -77,6 +80,27 @@ function gradeOptions(array $groups): string {
     </div>
   </div>
 </nav>
+<script>
+(function () {
+  var btn   = document.getElementById('homeNavToggle');
+  var links = document.getElementById('homeNavLinks');
+  var icon  = document.getElementById('homeNavIcon');
+  if (btn && links) {
+    btn.addEventListener('click', function () {
+      var open = links.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      icon.className = open ? 'bi bi-x-lg' : 'bi bi-list';
+    });
+    links.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        links.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+        icon.className = 'bi bi-list';
+      });
+    });
+  }
+})();
+</script>
 
 <!-- ── HERO ── -->
 <section class="hero" id="home">
@@ -253,10 +277,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
       $c_type    = in_array($child['student_type'] ?? '', ['new','old']) ? $child['student_type'] : 'new';
       $c_sex     = trim($child['sex']          ?? '');
       $c_birthday_raw = trim($child['birthday'] ?? '');
-      $c_religion= trim($child['religion']     ?? '');
+      // Religion: if select = 'Others', use the text input; otherwise use the select value
+      $c_religion_sel = trim($child['religion_select'] ?? '');
+      $c_religion_txt = trim($child['religion']        ?? '');
+      $c_religion = ($c_religion_sel === 'Others' || empty($c_religion_sel)) ? $c_religion_txt : $c_religion_sel;
       $c_last_school = trim($child['last_school'] ?? '');
       $c_sy_grad = trim($child['school_year_graduated'] ?? '');
       $c_school_addr = trim($child['school_address'] ?? '');
+      // For returning students, use the provided LRN; for new students generate a temp one
+      $c_provided_lrn = trim($child['lrn'] ?? '');
 
       if (empty($c_first) || empty($c_last) || !$c_grade) continue;
 
@@ -272,8 +301,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
                       : null;
       }
 
-      // Temp LRN: "P-" + 6-char hex = 8 chars, well within varchar(20), collision-proof
-      $temp_lrn = 'P-' . strtoupper(substr(md5(uniqid('', true)), 0, 10));
+      // LRN: use provided LRN for returning students; generate temp for new students
+      if ($c_type === 'old' && !empty($c_provided_lrn)) {
+        $temp_lrn = $c_provided_lrn;
+      } else {
+        $temp_lrn = 'P-' . strtoupper(substr(md5(uniqid('', true)), 0, 10));
+      }
 
       $stmt_s = $conn->prepare("INSERT INTO students
         (first_name, middle_name, last_name, lrn, grade_level_id, student_type, school_year_id,
@@ -312,7 +345,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
         $enroll_results[] = ['ref' => $ref_num, 'child_name' => "$c_first $c_last"];
       }
 
-      // Save uploaded documents into student_requirements
+      // Save uploaded documents into student_requirements (new students only)
+      if ($c_type === 'new') {
       $upload_dir = __DIR__ . '/pages/uploads/';
       if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
       $allowed_types = ['image/jpeg','image/png','image/webp','application/pdf'];
@@ -348,6 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
           }
         }
       }
+      } // end if new student
     } // end foreach children
 
     if (!empty($enroll_results)) {
@@ -461,47 +496,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
       <div class="ef-grid ef-3col">
         <div class="ef-field">
           <label>First Name *</label>
-          <input type="text" name="children[0][first_name]" class="ef-input" required/>
+          <input type="text" name="children[0][first_name]" class="ef-input" required
+                 value="<?= htmlspecialchars($_POST['children'][0]['first_name'] ?? '') ?>"/>
         </div>
         <div class="ef-field">
           <label>Middle Name</label>
-          <input type="text" name="children[0][middle_name]" class="ef-input" placeholder="N/A if none"/>
+          <input type="text" name="children[0][middle_name]" class="ef-input" placeholder="N/A if none"
+                 value="<?= htmlspecialchars($_POST['children'][0]['middle_name'] ?? '') ?>"/>
         </div>
         <div class="ef-field">
           <label>Last Name *</label>
-          <input type="text" name="children[0][last_name]" class="ef-input" required/>
+          <input type="text" name="children[0][last_name]" class="ef-input" required
+                 value="<?= htmlspecialchars($_POST['children'][0]['last_name'] ?? '') ?>"/>
         </div>
+      </div>
+
+      <!-- Returning student: LRN lookup notice -->
+      <div id="returning-lrn-notice" style="display:<?= (($_POST['children'][0]['student_type'] ?? 'new') === 'old') ? 'block' : 'none' ?>;background:#eef0f8;border-left:4px solid #494C8A;border-radius:8px;padding:12px 16px;margin-top:12px;font-size:13px;color:#374151;">
+        <i class="bi bi-info-circle-fill" style="color:#494C8A;"></i>
+        <strong>Returning Student:</strong> Please provide your child's LRN (Learner Reference Number) below. The registrar will verify your existing record. No document uploads are required.
       </div>
 
       <div class="ef-grid ef-3col" style="margin-top:14px;">
         <div class="ef-field">
           <label>Incoming Grade Level *</label>
           <select name="children[0][grade_level_id]" class="ef-input" required>
-            <?= gradeOptions($grade_groups) ?>
+            <?php
+            // Repopulate selected grade
+            $sel_grade = intval($_POST['children'][0]['grade_level_id'] ?? 0);
+            echo '<option value="">Select Grade</option>';
+            foreach ($grade_groups as $glabel => $grades) {
+              if (empty($grades)) continue;
+              echo '<optgroup label="' . htmlspecialchars($glabel) . '">';
+              foreach ($grades as $g) {
+                $sel = ($g['id'] == $sel_grade) ? 'selected' : '';
+                echo '<option value="' . $g['id'] . '" ' . $sel . '>' . htmlspecialchars($g['name']) . '</option>';
+              }
+              echo '</optgroup>';
+            }
+            ?>
           </select>
         </div>
         <div class="ef-field">
           <label>Sex *</label>
           <select name="children[0][sex]" class="ef-input" required>
             <option value="">Select</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
+            <option value="male"   <?= (($_POST['children'][0]['sex'] ?? '') === 'male')   ? 'selected' : '' ?>>Male</option>
+            <option value="female" <?= (($_POST['children'][0]['sex'] ?? '') === 'female') ? 'selected' : '' ?>>Female</option>
           </select>
         </div>
         <div class="ef-field">
           <label>Religion</label>
-          <input type="text" name="children[0][religion]" class="ef-input"/>
+          <?php
+          $religions = ['Roman Catholic','Islam','Iglesia ni Cristo','Seventh-day Adventist','Born Again Christian','Baptist','Methodist','Jehovah\'s Witness','Buddhism','Hinduism','Others'];
+          $c_rel_val = $_POST['children'][0]['religion'] ?? '';
+          $c_rel_is_other = $c_rel_val && !in_array($c_rel_val, $religions);
+          ?>
+          <select name="children[0][religion_select]" id="child0-religion-select" class="ef-input" onchange="toggleReligionOther(this,'child0-religion-other','children[0][religion]')">
+            <option value="">Select Religion</option>
+            <?php foreach ($religions as $rel): ?>
+            <option value="<?= htmlspecialchars($rel) ?>" <?= ($c_rel_val === $rel || ($c_rel_is_other && $rel === 'Others')) ? 'selected' : '' ?>><?= htmlspecialchars($rel) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <input type="text" name="children[0][religion]" id="child0-religion-other" class="ef-input"
+                 placeholder="Please specify religion"
+                 value="<?= htmlspecialchars($c_rel_is_other ? $c_rel_val : ($c_rel_val && $c_rel_val !== 'Others' ? $c_rel_val : '')) ?>"
+                 style="margin-top:6px;<?= ($c_rel_is_other || ($c_rel_val === 'Others')) ? '' : 'display:none;' ?>"/>
         </div>
       </div>
 
       <div class="ef-grid ef-2col" style="margin-top:14px;">
         <div class="ef-field">
           <label>Date of Birth *</label>
-          <input type="date" name="children[0][birthday]" class="ef-input" required/>
+          <input type="date" name="children[0][birthday]" class="ef-input" required
+                 value="<?= htmlspecialchars($_POST['children'][0]['birthday'] ?? '') ?>"/>
         </div>
         <div class="ef-field">
           <label>Place of Birth</label>
-          <input type="text" name="children[0][birth_place]" class="ef-input"/>
+          <input type="text" name="children[0][birth_place]" class="ef-input"
+                 value="<?= htmlspecialchars($_POST['children'][0]['birth_place'] ?? '') ?>"/>
+        </div>
+      </div>
+
+      <!-- LRN field — required for returning students, optional for new -->
+      <div class="ef-grid ef-2col" style="margin-top:14px;">
+        <div class="ef-field" id="lrn-field-wrap">
+          <label id="lrn-label">LRN (Learner Reference Number) <span id="lrn-required-star" style="color:#d97706;display:<?= (($_POST['children'][0]['student_type'] ?? 'new') === 'old') ? 'inline' : 'none' ?>;">*</span></label>
+          <input type="text" name="children[0][lrn]" class="ef-input"
+                 placeholder="12-digit LRN"
+                 value="<?= htmlspecialchars($_POST['children'][0]['lrn'] ?? '') ?>"
+                 id="child0-lrn"
+                 maxlength="12"/>
+          <div style="font-size:11px;color:#6b7280;margin-top:3px;" id="lrn-hint">
+            For returning students, LRN is required for record verification.
+          </div>
         </div>
       </div>
 
@@ -537,30 +625,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
       <div class="ef-grid ef-3col">
         <div class="ef-field">
           <label>Guardian First Name *</label>
-          <input type="text" name="p_first" class="ef-input" required/>
+          <input type="text" name="p_first" class="ef-input" required
+                 value="<?= htmlspecialchars($_POST['p_first'] ?? '') ?>"/>
         </div>
         <div class="ef-field">
           <label>Middle Name</label>
-          <input type="text" name="p_middle" class="ef-input"/>
+          <input type="text" name="p_middle" class="ef-input"
+                 value="<?= htmlspecialchars($_POST['p_middle'] ?? '') ?>"/>
         </div>
         <div class="ef-field">
           <label>Last Name *</label>
-          <input type="text" name="p_last" class="ef-input" required/>
+          <input type="text" name="p_last" class="ef-input" required
+                 value="<?= htmlspecialchars($_POST['p_last'] ?? '') ?>"/>
         </div>
       </div>
 
       <div class="ef-grid ef-3col" style="margin-top:14px;">
         <div class="ef-field">
           <label>Mobile Number * <span style="font-size:11px;color:#6b7280;">(09XXXXXXXXX)</span></label>
-          <input type="tel" name="p_mobile" class="ef-input" required/>
+          <input type="tel" name="p_mobile" class="ef-input" required
+                 value="<?= htmlspecialchars($_POST['p_mobile'] ?? '') ?>"/>
         </div>
         <div class="ef-field">
           <label>Email Address *</label>
-          <input type="email" name="p_email" class="ef-input" required/>
+          <input type="email" name="p_email" class="ef-input" required
+                 value="<?= htmlspecialchars($_POST['p_email'] ?? '') ?>"/>
         </div>
         <div class="ef-field">
           <label>Alternate Contact No.</label>
-          <input type="tel" name="p_contact" class="ef-input"/>
+          <input type="tel" name="p_contact" class="ef-input"
+                 value="<?= htmlspecialchars($_POST['p_contact'] ?? '') ?>"/>
         </div>
       </div>
 
@@ -615,23 +709,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
           <label>Sex</label>
           <select name="p_sex" class="ef-input">
             <option value="">Select</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
+            <option value="male"   <?= ($_POST['p_sex'] ?? '') === 'male'   ? 'selected' : '' ?>>Male</option>
+            <option value="female" <?= ($_POST['p_sex'] ?? '') === 'female' ? 'selected' : '' ?>>Female</option>
           </select>
         </div>
         <div class="ef-field">
           <label>Civil Status</label>
           <select name="p_civil" class="ef-input">
             <option value="">Select</option>
-            <option value="Single">Single</option>
-            <option value="Married">Married</option>
-            <option value="Widowed">Widowed</option>
-            <option value="Separated">Separated</option>
+            <option value="Single"    <?= ($_POST['p_civil'] ?? '') === 'Single'    ? 'selected' : '' ?>>Single</option>
+            <option value="Married"   <?= ($_POST['p_civil'] ?? '') === 'Married'   ? 'selected' : '' ?>>Married</option>
+            <option value="Widowed"   <?= ($_POST['p_civil'] ?? '') === 'Widowed'   ? 'selected' : '' ?>>Widowed</option>
+            <option value="Separated" <?= ($_POST['p_civil'] ?? '') === 'Separated' ? 'selected' : '' ?>>Separated</option>
           </select>
         </div>
         <div class="ef-field">
           <label>Religion</label>
-          <input type="text" name="p_religion" class="ef-input"/>
+          <?php
+          $p_rel_val = $_POST['p_religion'] ?? '';
+          $p_rel_is_other = $p_rel_val && !in_array($p_rel_val, $religions);
+          ?>
+          <select name="p_religion_select" id="parent-religion-select" class="ef-input" onchange="toggleReligionOther(this,'parent-religion-other','p_religion')">
+            <option value="">Select Religion</option>
+            <?php foreach ($religions as $rel): ?>
+            <option value="<?= htmlspecialchars($rel) ?>" <?= ($p_rel_val === $rel || ($p_rel_is_other && $rel === 'Others')) ? 'selected' : '' ?>><?= htmlspecialchars($rel) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <input type="text" name="p_religion" id="parent-religion-other" class="ef-input"
+                 placeholder="Please specify religion"
+                 value="<?= htmlspecialchars($p_rel_is_other ? $p_rel_val : '') ?>"
+                 style="margin-top:6px;<?= ($p_rel_is_other || $p_rel_val === 'Others') ? '' : 'display:none;' ?>"/>
         </div>
       </div>
 
@@ -639,47 +746,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
   </div>
 
   <!-- ══════════════════════════════════════════════════════
-       SECTION D — Address
+       SECTION D — Address (NCR only)
   ══════════════════════════════════════════════════════ -->
   <div class="ef-section">
     <div class="ef-section-header">Address</div>
     <div class="ef-section-body">
+      <!-- NCR is hardcoded; province = Metro Manila -->
+      <input type="hidden" name="p_region_text"   id="enroll-region-text"   value="<?= htmlspecialchars($_POST['p_region_text']   ?? 'National Capital Region (NCR)') ?>">
+      <input type="hidden" name="p_province_text" id="enroll-province-text" value="<?= htmlspecialchars($_POST['p_province_text'] ?? 'Metro Manila') ?>">
+      <input type="hidden" name="p_city_text"     id="enroll-city-text"     value="<?= htmlspecialchars($_POST['p_city_text']     ?? '') ?>">
+      <input type="hidden" name="p_barangay_text" id="enroll-barangay-text" value="<?= htmlspecialchars($_POST['p_barangay_text'] ?? '') ?>">
+
       <div class="ef-grid ef-2col">
         <div class="ef-field">
-          <label>Region *</label>
-          <select name="p_region" id="enroll-region" class="ef-input">
-            <option value="" disabled selected>Select Region</option>
-          </select>
-          <input type="hidden" name="p_region_text" id="enroll-region-text">
-        </div>
-        <div class="ef-field">
-          <label>Province *</label>
-          <select name="p_province" id="enroll-province" class="ef-input">
-            <option value="" disabled selected>Select Province</option>
-          </select>
-          <input type="hidden" name="p_province_text" id="enroll-province-text">
-        </div>
-        <div class="ef-field">
           <label>City / Municipality *</label>
-          <select name="p_city" id="enroll-city" class="ef-input">
-            <option value="" disabled selected>Select City / Municipality</option>
+          <select name="p_city" id="enroll-city" class="ef-input" required>
+            <option value="" disabled <?= empty($_POST['p_city']) ? 'selected' : '' ?>>Select City / Municipality</option>
           </select>
-          <input type="hidden" name="p_city_text" id="enroll-city-text">
         </div>
         <div class="ef-field">
           <label>Barangay *</label>
-          <select name="p_barangay" id="enroll-barangay" class="ef-input">
-            <option value="" disabled selected>Select Barangay</option>
+          <select name="p_barangay" id="enroll-barangay" class="ef-input" required>
+            <option value="" disabled <?= empty($_POST['p_barangay']) ? 'selected' : '' ?>>Select Barangay</option>
           </select>
-          <input type="hidden" name="p_barangay_text" id="enroll-barangay-text">
         </div>
         <div class="ef-field">
           <label>House #, Block, Lot, Unit, Building *</label>
-          <input type="text" name="p_house" class="ef-input" required/>
+          <input type="text" name="p_house" class="ef-input" required
+                 value="<?= htmlspecialchars($_POST['p_house'] ?? '') ?>"/>
         </div>
         <div class="ef-field">
           <label>Street, Village / Subdivision *</label>
-          <input type="text" name="p_street" class="ef-input" required/>
+          <input type="text" name="p_street" class="ef-input" required
+                 value="<?= htmlspecialchars($_POST['p_street'] ?? '') ?>"/>
         </div>
       </div>
     </div>
@@ -700,9 +799,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
   </div>
 
   <!-- ══════════════════════════════════════════════════════
-       SECTION F — Attachments
+       SECTION F — Attachments (new students only)
   ══════════════════════════════════════════════════════ -->
-  <div class="ef-section" id="attachments-section">
+  <div class="ef-section" id="attachments-section" style="display:<?= (($_POST['children'][0]['student_type'] ?? 'new') === 'old') ? 'none' : 'block' ?>;">
     <div class="ef-section-header">Attachments</div>
     <div class="ef-section-body">
       <div style="background:#fef9c3;border-left:4px solid #d97706;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e;line-height:1.7;">
@@ -711,9 +810,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_submit'])) {
       </div>
       <div id="new-student-docs" style="background:#eef0f8;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#374151;">
         For new students, please attach a clear copy of your <strong>Form 138 / Report Card</strong> and <strong>Certificate of Good Moral Character</strong>.
-      </div>
-      <div id="old-student-docs" style="background:#eef0f8;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#374151;display:none;">
-        For returning students, please attach your most recent <strong>Report Card (Form 138)</strong>.
       </div>
       <div class="ef-grid ef-2col">
         <div class="ef-field">
@@ -862,21 +958,40 @@ const GRADE_OPTIONS_HTML = <?= json_encode('<option value="">Select Grade</optio
 
 // Show/hide Education section and attachment notes based on student type
 function toggleEduSection(val) {
-  const edu       = document.getElementById('edu-section');
-  const newDocs   = document.getElementById('new-student-docs');
-  const oldDocs   = document.getElementById('old-student-docs');
-  const goodMoral = document.getElementById('doc-goodmoral-wrap');
+  const edu         = document.getElementById('edu-section');
+  const attachments = document.getElementById('attachments-section');
+  const lrnNotice   = document.getElementById('returning-lrn-notice');
+  const lrnStar     = document.getElementById('lrn-required-star');
+  const lrnInput    = document.getElementById('child0-lrn');
 
   if (val === 'old') {
-    if (edu)       edu.style.display      = 'none';
-    if (newDocs)   newDocs.style.display  = 'none';
-    if (oldDocs)   oldDocs.style.display  = 'block';
-    if (goodMoral) goodMoral.style.display = 'none';
+    if (edu)         edu.style.display         = 'none';
+    if (attachments) attachments.style.display = 'none';
+    if (lrnNotice)   lrnNotice.style.display   = 'block';
+    if (lrnStar)     lrnStar.style.display     = 'inline';
+    if (lrnInput)    lrnInput.setAttribute('required', '');
   } else {
-    if (edu)       edu.style.display      = 'block';
-    if (newDocs)   newDocs.style.display  = 'block';
-    if (oldDocs)   oldDocs.style.display  = 'none';
-    if (goodMoral) goodMoral.style.display = 'block';
+    if (edu)         edu.style.display         = 'block';
+    if (attachments) attachments.style.display = 'block';
+    if (lrnNotice)   lrnNotice.style.display   = 'none';
+    if (lrnStar)     lrnStar.style.display     = 'none';
+    if (lrnInput)    lrnInput.removeAttribute('required');
+  }
+}
+
+// Religion dropdown: show/hide "specify" text input
+function toggleReligionOther(selectEl, otherId, hiddenName) {
+  const otherInput = document.getElementById(otherId);
+  if (!otherInput) return;
+  if (selectEl.value === 'Others') {
+    otherInput.style.display = 'block';
+    otherInput.setAttribute('required', '');
+    otherInput.focus();
+  } else {
+    otherInput.style.display = 'none';
+    otherInput.removeAttribute('required');
+    // Copy the selected value into the hidden/text input so it submits correctly
+    otherInput.value = selectEl.value;
   }
 }
 
@@ -1003,10 +1118,8 @@ document.getElementById('enrollForm').addEventListener('submit', function(e) {
     }
   });
 
-  // Address: check hidden text inputs
+  // Address: check hidden text inputs (NCR only — city and barangay required)
   [
-    ['enroll-region-text',   'enroll-region',   'Region'],
-    ['enroll-province-text', 'enroll-province', 'Province'],
     ['enroll-city-text',     'enroll-city',     'City / Municipality'],
     ['enroll-barangay-text', 'enroll-barangay', 'Barangay'],
   ].forEach(function([hidId, selId, label]) {

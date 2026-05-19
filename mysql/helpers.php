@@ -60,24 +60,24 @@ function get_balance($conn, int $student_id, int $grade_level_id, int $sy_id): f
 
 /**
  * Get fee rows with paid/balance/status distributed proportionally.
- * Discounts are applied to the total before distributing payment.
+ * Discounts apply to TUITION FEE ONLY (not miscellaneous or other fees).
  * If total_paid > net_fees, balance is negative (school owes parent).
  */
 function get_fee_rows_with_payment($conn, int $student_id, int $grade_level_id, int $sy_id): array {
   $fee_data   = get_fees($conn, $grade_level_id, $sy_id);
   $total_paid = get_total_paid($conn, $student_id);
 
-  // Fetch discounts and compute total discount amount
-  $discounts_raw = $conn->query("SELECT * FROM discounts WHERE student_id=$student_id AND school_year_id=$sy_id")->fetch_all(MYSQLI_ASSOC);
-  $total_discount = 0;
-  foreach ($discounts_raw as $d) {
-    if (!empty($d['fixed_amount']) && $d['fixed_amount'] > 0) {
-      $total_discount += floatval($d['fixed_amount']);
-    } else {
-      $total_discount += $fee_data['total'] * (floatval($d['percentage']) / 100);
+  // Get tuition fee total (discount base)
+  $tuition_total = 0;
+  foreach ($fee_data['fees'] as $f) {
+    if (($f['fee_type'] ?? '') === 'tuition') {
+      $tuition_total += floatval($f['amount']);
     }
   }
-  $total_discount = min($total_discount, $fee_data['total']);
+
+  // Fetch discounts and compute total discount amount against tuition only
+  $discounts_raw  = $conn->query("SELECT * FROM discounts WHERE student_id=$student_id AND school_year_id=$sy_id")->fetch_all(MYSQLI_ASSOC);
+  $total_discount = compute_tuition_discount($discounts_raw, $tuition_total);
   $net_fees = $fee_data['total'] - $total_discount;
 
   $pay_details = $conn->query("
@@ -89,10 +89,11 @@ function get_fee_rows_with_payment($conn, int $student_id, int $grade_level_id, 
   $remaining = $total_paid;
   $rows = [];
   foreach ($fee_data['fees'] as $fp) {
-    // Apply proportional discount to this fee row
-    $fee_discount = $fee_data['total'] > 0
-      ? ($fp['amount'] / $fee_data['total']) * $total_discount
-      : 0;
+    // Apply discount only to tuition rows
+    $fee_discount = 0;
+    if (($fp['fee_type'] ?? '') === 'tuition' && $tuition_total > 0) {
+      $fee_discount = ($fp['amount'] / $tuition_total) * $total_discount;
+    }
     $net_amount = round($fp['amount'] - $fee_discount, 2);
 
     if ($remaining >= $net_amount) {
@@ -117,7 +118,6 @@ function get_fee_rows_with_payment($conn, int $student_id, int $grade_level_id, 
     $rows[] = $fp;
   }
 
-  // If overpaid, balance is negative (school owes parent)
   $total_bal = $net_fees - $total_paid;
 
   return [
@@ -126,37 +126,84 @@ function get_fee_rows_with_payment($conn, int $student_id, int $grade_level_id, 
     'total_discount' => $total_discount,
     'net_fees'       => $net_fees,
     'total_paid'     => $total_paid,
-    'total_bal'      => $total_bal,   // can be negative
+    'total_bal'      => $total_bal,
     'discounts'      => $discounts_raw,
     'pay_details'    => $pay_details,
   ];
 }
 
 /**
- * Return the last day of a given month/year as a Y-m-d string.
+ * Compute the effective tuition discount for a student.
+ *
+ * Rules:
+ * 1. All discounts are grouped per student.
+ * 2. Percentage-only discounts are summed first, capped at 100%.
+ * 3. If total percentage == 100%, fixed amounts are ignored (tuition is fully discounted).
+ * 4. If total percentage < 100%, apply the percentage first, then subtract fixed amounts
+ *    from the remaining tuition. If the result goes negative, clamp to 0.
+ *
+ * Returns the total discount amount (in pesos) to subtract from tuition.
  */
+function compute_tuition_discount(array $discounts_raw, float $tuition_total): float {
+  if ($tuition_total <= 0) return 0.0;
+
+  // Separate percentage and fixed discounts
+  $total_pct   = 0.0;
+  $total_fixed = 0.0;
+
+  foreach ($discounts_raw as $d) {
+    $pct   = floatval($d['percentage']   ?? 0);
+    $fixed = floatval($d['fixed_amount'] ?? 0);
+    if ($fixed > 0) {
+      $total_fixed += $fixed;
+    } else {
+      $total_pct += $pct;
+    }
+  }
+
+  // Rule 2: cap percentage at 100%
+  $total_pct = min($total_pct, 100.0);
+
+  // Rule 3: if percentage == 100%, fixed amounts are ignored
+  if ($total_pct >= 100.0) {
+    return $tuition_total; // full tuition discount
+  }
+
+  // Apply percentage discount first
+  $after_pct = $tuition_total * (1.0 - $total_pct / 100.0);
+
+  // Then subtract fixed amounts from the remaining balance
+  $after_fixed = $after_pct - $total_fixed;
+
+  // Clamp to 0 (cannot discount more than tuition)
+  $after_fixed = max(0.0, $after_fixed);
+
+  // Total discount = original tuition minus what's left
+  return round($tuition_total - $after_fixed, 2);
+}
 function last_day_of(int $month, int $year): string {
   return $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT) . '-' . date('t', mktime(0, 0, 0, $month, 1, $year));
 }
 
 /**
- * Compute the net total fees for a student (fees minus discounts).
+ * Compute the net total fees for a student (fees minus discounts on tuition only).
  * Used as the basis for payment scheme amounts.
  */
 function get_net_total_for_student($conn, int $student_id, int $grade_level_id, int $sy_id): float {
   $fee_data = get_fees($conn, $grade_level_id, $sy_id);
   $total    = $fee_data['total'];
 
-  $discounts_raw = $conn->query("SELECT * FROM discounts WHERE student_id=$student_id AND school_year_id=$sy_id")->fetch_all(MYSQLI_ASSOC);
-  $discount = 0;
-  foreach ($discounts_raw as $d) {
-    if (!empty($d['fixed_amount']) && $d['fixed_amount'] > 0) {
-      $discount += floatval($d['fixed_amount']);
-    } else {
-      $discount += $total * (floatval($d['percentage']) / 100);
+  // Tuition-only base for discounts
+  $tuition_total = 0;
+  foreach ($fee_data['fees'] as $f) {
+    if (($f['fee_type'] ?? '') === 'tuition') {
+      $tuition_total += floatval($f['amount']);
     }
   }
-  return max(0, $total - min($discount, $total));
+
+  $discounts_raw = $conn->query("SELECT * FROM discounts WHERE student_id=$student_id AND school_year_id=$sy_id")->fetch_all(MYSQLI_ASSOC);
+  $discount = compute_tuition_discount($discounts_raw, $tuition_total);
+  return max(0, $total - $discount);
 }
 
 /**
@@ -339,18 +386,29 @@ function generate_payment_schedule($conn, int $student_id, int $enrollment_id, i
 
 /**
  * Repair bad due_date values in payment_schedules for an enrollment.
- * Fixes rows that were stored with invalid dates (e.g. 0000-00-00 or year -0001)
- * by recomputing correct end-of-month dates from the installment label.
+ * Fixes rows that were stored with invalid dates (e.g. 0000-00-00 or year -0001).
+ * Uses label-to-date mapping — amounts are not changed, only dates.
  */
 function repair_payment_schedule_dates($conn, int $enrollment_id, string $scheme): void {
-  $config = get_payment_scheme_config($scheme);
-  if (empty($config)) return;
+  if (empty($scheme)) return;
 
-  // Build label → due_date map from config
-  $date_map = [];
-  foreach ($config['installments'] as $inst) {
-    $date_map[$inst['label']] = $inst['due_date'];
-  }
+  // Build label → due_date map using the static config (dates are the same regardless of amount)
+  $y  = (int) date('Y');
+  $y1 = $y + 1;
+  $date_map = [
+    '2nd Payment (November)'  => last_day_of(11, $y),
+    '2nd Payment (August)'    => last_day_of(8,  $y),
+    '3rd Payment (November)'  => last_day_of(11, $y),
+    '4th Payment (February)'  => last_day_of(2,  $y1),
+    'July Payment'            => last_day_of(7,  $y),
+    'August Payment'          => last_day_of(8,  $y),
+    'September Payment'       => last_day_of(9,  $y),
+    'October Payment'         => last_day_of(10, $y),
+    'November Payment'        => last_day_of(11, $y),
+    'December Payment'        => last_day_of(12, $y),
+    'January Payment'         => last_day_of(1,  $y1),
+    'February Payment'        => last_day_of(2,  $y1),
+  ];
 
   // Fetch all non-downpayment rows for this enrollment
   $rows = $conn->query("
@@ -362,22 +420,18 @@ function repair_payment_schedule_dates($conn, int $enrollment_id, string $scheme
   while ($row = $rows->fetch_assoc()) {
     $correct = $date_map[$row['label']] ?? null;
     if (!$correct) continue;
-
-    // Check if stored date is bad (year < 2000 or null/zero)
     $stored_year = (int) substr($row['due_date'] ?? '', 0, 4);
     if ($stored_year < 2000) {
-      // Reset date, clear any wrongly-applied penalty, restore status to unpaid
       $conn->query("UPDATE payment_schedules SET due_date='$correct', penalty=0, status='unpaid' WHERE id={$row['id']}");
     }
   }
 
-  // Also fix downpayment row if it has a bad date — due date is June 30
+  // Fix downpayment row if it has a bad date — due date is June 30
   $dp = $conn->query("SELECT id, due_date FROM payment_schedules WHERE enrollment_id=$enrollment_id AND installment_no=1 LIMIT 1")->fetch_assoc();
   if ($dp) {
     $dp_year = (int) substr($dp['due_date'] ?? '', 0, 4);
     if ($dp_year < 2000) {
-      $june30 = last_day_of(6, (int) date('Y'));
-      // Reset date, clear wrongly-applied penalty, restore status to unpaid
+      $june30 = last_day_of(6, $y);
       $conn->query("UPDATE payment_schedules SET due_date='$june30', penalty=0, status='unpaid' WHERE id={$dp['id']}");
     }
   }

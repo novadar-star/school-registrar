@@ -106,17 +106,18 @@ $pay_summary = $conn->query("
   FROM payments WHERE student_id=$student_id
 ")->fetch_assoc();
 
-// Compute total fees (deduplicated) for balance
+// Compute total fees (deduplicated) for balance — only if fees exist for this grade
 $fees_for_balance = $conn->query("
   SELECT name, amount FROM fees
   WHERE grade_level_id = {$student['grade_level_id']} AND school_year_id = $sy_id AND fee_type != 'sped'
   ORDER BY name
 ")->fetch_all(MYSQLI_ASSOC);
+$fees_assessed = count($fees_for_balance) > 0;
 $seen_bal = []; $total_fees_bal = 0;
 foreach ($fees_for_balance as $f) {
   if (!isset($seen_bal[$f['name']])) { $seen_bal[$f['name']] = true; $total_fees_bal += $f['amount']; }
 }
-$pay_summary['balance'] = max(0, $total_fees_bal - $pay_summary['paid']);
+$pay_summary['balance'] = $fees_assessed ? max(0, $total_fees_bal - $pay_summary['paid']) : null;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -218,10 +219,15 @@ $pay_summary['balance'] = max(0, $total_fees_bal - $pay_summary['paid']);
     <a href="soa.php" class="portal-summary-card">
       <div class="psc-icon" style="background:#dcfce7;color:#166534"><i class="bi bi-cash-coin"></i></div>
       <div class="psc-body">
+        <?php if ($fees_assessed): ?>
         <div class="psc-val">₱<?= number_format($pay_summary['paid'] ?? 0, 0) ?></div>
         <div class="psc-label">Step 3 · Statement of Account</div>
+        <?php else: ?>
+        <div class="psc-val" style="font-size:13px;color:var(--muted);">Pending</div>
+        <div class="psc-label">Step 3 · Fees not yet assessed</div>
+        <?php endif; ?>
       </div>
-      <?php if (($pay_summary['balance'] ?? 0) > 0): ?>
+      <?php if ($fees_assessed && ($pay_summary['balance'] ?? 0) > 0): ?>
         <span class="psc-alert">₱<?= number_format($pay_summary['balance'], 0) ?> balance</span>
       <?php endif; ?>
     </a>

@@ -85,7 +85,7 @@ $stmt = $conn->prepare("SELECT s.*, g.name as grade_name, sec.name as section_na
         LEFT JOIN sections sec ON s.section_id = sec.id
         LEFT JOIN school_years sy ON s.school_year_id = sy.id
         WHERE $where_sql
-        ORDER BY s.last_name ASC
+        ORDER BY s.id DESC
         LIMIT $limit OFFSET $offset");
 $stmt->bind_param($bind_types, ...$bind_vals);
 $stmt->execute();
